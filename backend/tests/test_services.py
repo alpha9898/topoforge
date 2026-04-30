@@ -1,4 +1,5 @@
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 from openpyxl import Workbook
 
@@ -93,6 +94,32 @@ def test_device_corrections_change_remove_and_add_devices():
     assert corrected.cables == []
 
 
+def test_drawio_source_device_cable_colors_are_deterministic():
+    parsed = {
+        "raw_devices": [{"name": "Server-1"}, {"name": "Server-2"}, {"name": "SW1"}],
+        "raw_connections": [
+            {"sourceDevice": "Server-1", "sourcePort": "eth0", "targetDevice": "SW1", "targetPort": "Gi1/0/1", "cableType": "ethernet"},
+            {"sourceDevice": "Server-1", "sourcePort": "eth1", "targetDevice": "SW1", "targetPort": "Gi1/0/2", "cableType": "ethernet"},
+            {"sourceDevice": "SW1", "sourcePort": "Gi1/0/3", "targetDevice": "Server-2", "targetPort": "eth0", "cableType": "ethernet"},
+        ],
+        "issues": [],
+    }
+    topology = layout_topology(validate_topology(build_topology(parsed)))
+    xml = generate_drawio_xml(topology)
+    root = ET.fromstring(xml)
+    cells = {cell.attrib["id"]: cell for cell in root.iter("mxCell") if "id" in cell.attrib}
+
+    assert "TABLE 3: SOURCE CABLE COLORS" in xml
+    assert "Server-1" in xml
+    assert "Server-2" in xml
+    assert "YELLOW" in xml
+    assert "RED" in xml
+    assert "strokeColor=#FDD835" in cells["cable-001"].attrib["style"]
+    assert "strokeColor=#FDD835" in cells["cable-002"].attrib["style"]
+    assert "strokeColor=#E53935" in cells["cable-003"].attrib["style"]
+    assert "RED Server-2" in xml
+
+
 def test_ai_helper_maps_sample_aliases_and_ignores_false_connections(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     workbook = Workbook()
@@ -169,3 +196,16 @@ def test_standard_topology_completion_adds_external_chain_and_oob():
     assert "Internet ISP-1 -> ISP-1 WAN" in labels
     assert any(cable.sourceDeviceId == "oob-mgmt" and cable.targetDeviceId == "gui1vpsie01" for cable in topology.cables)
     assert any(cable.sourceDeviceId == "isp-1" and cable.targetDeviceId == "gui1fwall01" for cable in topology.cables)
+
+
+def test_standard_topology_completion_does_not_duplicate_on_second_pass():
+    parsed = {
+        "raw_devices": [{"name": "gui1fwall01"}, {"name": "gui1vpsie01"}],
+        "raw_connections": [],
+        "issues": [],
+    }
+    topology = complete_standard_topology(build_topology(parsed))
+    first_count = len(topology.cables)
+    topology = complete_standard_topology(topology)
+
+    assert len(topology.cables) == first_count

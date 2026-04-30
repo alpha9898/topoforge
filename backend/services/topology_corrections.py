@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel
 
 from models import Cable, Device, Port, Topology
@@ -39,15 +41,17 @@ def apply_topology_corrections(topology: Topology, corrections: TopologyCorrecti
             continue
         update = updates.get(device.id)
         if update:
+            patch = {}
             if update.name and update.name.strip():
-                device.name = update.name.strip()
-                device.hostname = device.hostname or device.name
+                patch["name"] = update.name.strip()
+                patch["hostname"] = device.hostname or patch["name"]
             if update.type and update.type.strip():
-                device.type = update.type.strip().lower().replace(" ", "_")
+                patch["type"] = update.type.strip().lower().replace(" ", "_")
             if update.mgmtIp is not None:
-                device.mgmtIp = update.mgmtIp.strip() or None
+                patch["mgmtIp"] = update.mgmtIp.strip() or None
             if update.zone is not None:
-                device.zone = update.zone.strip() or None
+                patch["zone"] = update.zone.strip() or None
+            device = device.model_copy(update=patch) if patch else device
         existing_ids.add(device.id)
         next_devices.append(device)
 
@@ -88,13 +92,10 @@ def _refresh_cable_label(cable: Cable, devices: list[Device]) -> Cable:
     names = {device.id: device.name for device in devices}
     source = names.get(cable.sourceDeviceId, cable.sourceDeviceId)
     target = names.get(cable.targetDeviceId, cable.targetDeviceId)
-    cable.label = f"{source} {cable.sourcePort or '?'} -> {target} {cable.targetPort or '?'}"
-    return cable
+    return cable.model_copy(update={"label": f"{source} {cable.sourcePort or '?'} -> {target} {cable.targetPort or '?'}"})
 
 
 def _slug(value: str) -> str:
-    import re
-
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "device"
 
 

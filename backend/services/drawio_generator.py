@@ -43,6 +43,21 @@ CABLE_STYLES = {
     "unknown": ("#212121", "0"),
 }
 
+SOURCE_COLOR_PALETTE = [
+    ("YELLOW", "#FDD835"),
+    ("RED", "#E53935"),
+    ("GREEN", "#43A047"),
+    ("CYAN", "#00ACC1"),
+    ("PURPLE", "#8E24AA"),
+    ("ORANGE", "#FB8C00"),
+    ("PINK", "#D81B60"),
+    ("BROWN", "#6D4C41"),
+    ("TEAL", "#00897B"),
+    ("BLUE", "#1E88E5"),
+    ("GRAY", "#757575"),
+    ("LIME", "#C0CA33"),
+]
+
 REFERENCE_START_X = 1220
 REFERENCE_START_Y = 80
 REFERENCE_GAP = 36
@@ -79,12 +94,14 @@ def generate_drawio_xml(topology: Topology) -> str:
     for device in topology.devices:
         _add_device(root, device)
     device_map = {device.id: device for device in topology.devices}
+    source_color_map = _source_color_map(topology.devices)
     cable_offsets = _parallel_cable_offsets(topology.cables)
     for cable in topology.cables:
-        _add_cable(root, cable, device_map, cable_offsets.get(cable.id, 0))
-    _add_cable_reference(root, topology, device_map, reference_x, REFERENCE_START_Y)
+        _add_cable(root, cable, device_map, cable_offsets.get(cable.id, 0), source_color_map)
+    _add_cable_reference(root, topology, device_map, reference_x, REFERENCE_START_Y, source_color_map)
     _add_legend(root, topology, reference_x + 620, REFERENCE_START_Y)
     _add_switch_port_summary(root, topology, device_map, reference_x, _cable_reference_bottom(topology) + REFERENCE_GAP)
+    _add_source_color_table(root, topology, device_map, source_color_map, reference_x, _source_color_table_y(topology))
     _add_notes(root, topology, notes_y)
     return ET.tostring(mxfile, encoding="unicode", xml_declaration=True)
 
@@ -126,8 +143,9 @@ def _add_device(root: ET.Element, device: Device) -> None:
     )
 
 
-def _add_cable(root: ET.Element, cable: Cable, devices: dict[str, Device], offset: int) -> None:
-    color, dashed = CABLE_STYLES.get(cable.connectionRole, CABLE_STYLES.get(cable.cableType, CABLE_STYLES["unknown"]))
+def _add_cable(root: ET.Element, cable: Cable, devices: dict[str, Device], offset: int, source_color_map: dict[str, tuple[str, str]]) -> None:
+    _, dashed = CABLE_STYLES.get(cable.connectionRole, CABLE_STYLES.get(cable.cableType, CABLE_STYLES["unknown"]))
+    color = _cable_owner_color(cable, devices, source_color_map)[1]
     style = (
         "edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=10;html=1;"
         "labelBackgroundColor=#ffffff;fontSize=10;spacing=4;"
@@ -204,7 +222,7 @@ def _add_legend(root: ET.Element, topology: Topology, x: int, y: int) -> None:
         ("BLACK solid", "Unknown links"),
     ]
     _add_box(root, "legend-box", x, y, 330, 178)
-    _add_text(root, "legend-title", "LEGEND", x, y, 330, 24, _table_title_style("#666666"))
+    _add_text(root, "legend-title", "ROLE / STYLE LEGEND", x, y, 330, 24, _table_title_style("#666666"))
     for index, (label, description) in enumerate(rows):
         role = ["wan", "lan", "management", "ha", "storage", "power", "unknown"][index]
         color, dashed = CABLE_STYLES[role]
@@ -213,7 +231,7 @@ def _add_legend(root: ET.Element, topology: Topology, x: int, y: int) -> None:
         _add_text(root, f"legend-label-{role}", f"{label} - {description}", x + 66, row_y, 252, 18, _table_cell_style("#FFFFFF", font_size=8))
 
 
-def _add_cable_reference(root: ET.Element, topology: Topology, devices: dict[str, Device], x: int, y: int) -> None:
+def _add_cable_reference(root: ET.Element, topology: Topology, devices: dict[str, Device], x: int, y: int, source_color_map: dict[str, tuple[str, str]]) -> None:
     columns = [
         ("ID", 34),
         ("Source", 112),
@@ -244,7 +262,7 @@ def _add_cable_reference(root: ET.Element, topology: Topology, devices: dict[str
             _clip(target.name if target else cable.targetDeviceId, 18),
             _clip(cable.targetPort or "?", 10),
             _clip(role, 12),
-            _legend_color_label(role),
+            _cable_owner_color_label(cable, devices, source_color_map),
             _clip(cable.description or cable.label, 28),
         ]
         row_y = y + 24 + TABLE_ROW_HEIGHT + index * TABLE_ROW_HEIGHT
@@ -290,6 +308,44 @@ def _add_switch_port_summary(root: ET.Element, topology: Topology, devices: dict
             cursor_x += col_width
 
 
+def _add_source_color_table(
+    root: ET.Element,
+    topology: Topology,
+    devices: dict[str, Device],
+    source_color_map: dict[str, tuple[str, str]],
+    x: int,
+    y: int,
+) -> None:
+    rows = _source_color_rows(topology, devices)
+    width = 650
+    height = 24 + TABLE_ROW_HEIGHT + max(1, len(rows)) * TABLE_ROW_HEIGHT
+    _add_box(root, "source-color-table-box", x, y, width, height)
+    _add_text(root, "source-color-table-title", "TABLE 3: SOURCE CABLE COLORS", x, y, width, 24, _table_title_style(TABLE_HEADER_FILL))
+    columns = [("Device", 180), ("Type", 100), ("Color", 110), ("Sample", 90), ("Cable count", 170)]
+    cursor_x = x
+    header_y = y + 24
+    for label, col_width in columns:
+        _add_text(root, f"source-color-header-{_slug(label)}", label, cursor_x, header_y, col_width, TABLE_ROW_HEIGHT, _table_header_style())
+        cursor_x += col_width
+
+    if not rows:
+        _add_text(root, "source-color-empty", "No source cables", x, y + 24 + TABLE_ROW_HEIGHT, width, TABLE_ROW_HEIGHT, _table_cell_style("#FFFFFF", font_size=8))
+        return
+
+    for index, (device, count) in enumerate(rows):
+        color_name, color = _source_color(device.id, source_color_map)
+        row_y = y + 24 + TABLE_ROW_HEIGHT + index * TABLE_ROW_HEIGHT
+        fill = "#FFFFFF" if index % 2 == 0 else "#F7FBFE"
+        row = [_clip(device.name, 28), _clip(device.type, 14), color_name, "", str(count)]
+        cursor_x = x
+        for cell_index, value in enumerate(row):
+            col_width = columns[cell_index][1]
+            _add_text(root, f"source-color-row-{index}-{cell_index}", value, cursor_x, row_y, col_width, TABLE_ROW_HEIGHT, _table_cell_style(fill, font_size=8))
+            if cell_index == 3:
+                _add_line(root, f"source-color-sample-{device.id}", cursor_x + 12, row_y + 10, cursor_x + col_width - 12, row_y + 10, color, "0")
+            cursor_x += col_width
+
+
 def _cable_reference_height(topology: Topology) -> int:
     return 24 + TABLE_ROW_HEIGHT + max(1, len(topology.cables)) * TABLE_ROW_HEIGHT
 
@@ -306,10 +362,23 @@ def _switch_port_summary_height(topology: Topology) -> int:
     return 24 + TABLE_ROW_HEIGHT + len(_port_summary_rows(topology, device_map, switches)) * TABLE_ROW_HEIGHT
 
 
-def _reference_bottom(topology: Topology) -> int:
+def _source_color_table_height(topology: Topology) -> int:
+    device_map = {device.id: device for device in topology.devices}
+    owner_ids = {_cable_color_owner(cable, device_map) for cable in topology.cables}
+    return 24 + TABLE_ROW_HEIGHT + max(1, len(owner_ids)) * TABLE_ROW_HEIGHT
+
+
+def _source_color_table_y(topology: Topology) -> int:
     summary_height = _switch_port_summary_height(topology)
-    summary_bottom = _cable_reference_bottom(topology) + REFERENCE_GAP + summary_height if summary_height else _cable_reference_bottom(topology)
-    return max(summary_bottom, REFERENCE_START_Y + 178)
+    y = _cable_reference_bottom(topology) + REFERENCE_GAP
+    if summary_height:
+        y += summary_height + REFERENCE_GAP
+    return y
+
+
+def _reference_bottom(topology: Topology) -> int:
+    source_bottom = _source_color_table_y(topology) + _source_color_table_height(topology)
+    return max(source_bottom, REFERENCE_START_Y + 178)
 
 
 def _reference_x(topology: Topology) -> int:
@@ -353,6 +422,16 @@ def _port_summary_rows(topology: Topology, devices: dict[str, Device], switches:
                     _clip(cable.id, 16),
                 ]
             )
+    return rows
+
+
+def _source_color_rows(topology: Topology, devices: dict[str, Device]) -> list[tuple[Device, int]]:
+    counts: dict[str, int] = {}
+    for cable in topology.cables:
+        owner_id = _cable_color_owner(cable, devices)
+        counts[owner_id] = counts.get(owner_id, 0) + 1
+    rows = [(devices[owner_id], count) for owner_id, count in counts.items() if owner_id in devices]
+    rows.sort(key=lambda item: item[0].name.lower())
     return rows
 
 
@@ -420,6 +499,43 @@ def _legend_color_label(role: str) -> str:
         "unknown": "BLACK",
     }
     return labels.get(role, labels.get(role.lower(), "BLACK"))
+
+
+def _source_color_map(devices: list[Device]) -> dict[str, tuple[str, str]]:
+    color_map: dict[str, tuple[str, str]] = {}
+    for index, device in enumerate(sorted(devices, key=lambda item: item.name.lower())):
+        color_map[device.id] = SOURCE_COLOR_PALETTE[index % len(SOURCE_COLOR_PALETTE)]
+    return color_map
+
+
+def _source_color(source_device_id: str, source_color_map: dict[str, tuple[str, str]]) -> tuple[str, str]:
+    return source_color_map.get(source_device_id, ("BLACK", "#212121"))
+
+
+def _source_color_label(source_device_id: str, source_color_map: dict[str, tuple[str, str]]) -> str:
+    color_name, _ = _source_color(source_device_id, source_color_map)
+    return color_name
+
+
+def _cable_owner_color(cable: Cable, devices: dict[str, Device], source_color_map: dict[str, tuple[str, str]]) -> tuple[str, str]:
+    return _source_color(_cable_color_owner(cable, devices), source_color_map)
+
+
+def _cable_owner_color_label(cable: Cable, devices: dict[str, Device], source_color_map: dict[str, tuple[str, str]]) -> str:
+    color_name, _ = _cable_owner_color(cable, devices, source_color_map)
+    owner = devices.get(_cable_color_owner(cable, devices))
+    return f"{color_name} {owner.name}" if owner else color_name
+
+
+def _cable_color_owner(cable: Cable, devices: dict[str, Device]) -> str:
+    source = devices.get(cable.sourceDeviceId)
+    target = devices.get(cable.targetDeviceId)
+    preferred_types = {"server", "storage", "pdu", "admin_endpoint", "vpn_gateway"}
+    if source and source.type in preferred_types:
+        return source.id
+    if target and target.type in preferred_types:
+        return target.id
+    return cable.sourceDeviceId
 
 
 def _clip(value: str | None, limit: int) -> str:

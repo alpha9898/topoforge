@@ -71,9 +71,16 @@ def apply_answers(topology: Topology, answers: list[Answer]) -> Topology:
             cable.targetPort = target_answer
         if cable_type_answer:
             cable.cableType = cable_type_answer.lower()
-        cable.label = f"{cable.sourcePort or '?'} ↔ {cable.targetPort or '?'}"
+        cable.label = _cable_label(topology, cable.sourceDeviceId, cable.sourcePort, cable.targetDeviceId, cable.targetPort)
     topology.issues = [issue for issue in topology.issues if not _answered(issue, answer_map)]
     return validate_topology(topology)
+
+
+def _cable_label(topology: Topology, source_id: str, source_port: str | None, target_id: str, target_port: str | None) -> str:
+    names = {device.id: device.name for device in topology.devices}
+    source = names.get(source_id, source_id)
+    target = names.get(target_id, target_id)
+    return f"{source} {source_port or '?'} -> {target} {target_port or '?'}"
 
 
 def _answered(issue, answer_map: dict[str, str]) -> bool:

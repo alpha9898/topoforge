@@ -18,7 +18,15 @@ def build_ai_suggestions(parsed: dict[str, Any], include_ips: bool = False) -> d
     if not api_key:
         local["source"] = "local_rules"
         local["status"] = "gemini_api_key_missing"
-    return local
+        return local
+    try:
+        gemini = _gemini_suggestions(parsed, include_ips, api_key)
+        return _merge_suggestions(local, gemini)
+    except Exception as exc:
+        local["source"] = "local_rules"
+        local["status"] = "gemini_failed"
+        local["message"] = str(exc)
+        return local
 
 
 def enrich_topology_connections(topology: Topology, suggestions: dict[str, Any] | None = None, include_ips: bool = False) -> Topology:
@@ -51,15 +59,6 @@ def enrich_topology_connections(topology: Topology, suggestions: dict[str, Any] 
         topology.aiSuggestions = topology.aiSuggestions or {}
         topology.aiSuggestions["connection_enrichment"] = enrichment
     return topology
-
-    try:
-        gemini = _gemini_suggestions(parsed, include_ips, api_key)
-        return _merge_suggestions(local, gemini)
-    except Exception as exc:
-        local["source"] = "local_rules"
-        local["status"] = "gemini_failed"
-        local["message"] = str(exc)
-        return local
 
 
 def apply_ai_suggestions_to_parsed(parsed: dict[str, Any], suggestions: dict[str, Any]) -> dict[str, Any]:

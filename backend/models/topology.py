@@ -1,8 +1,25 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
+
+DeviceType: TypeAlias = Literal[
+    "admin_endpoint",
+    "cloud",
+    "firewall",
+    "isp_router",
+    "other",
+    "pdu",
+    "router",
+    "server",
+    "storage",
+    "switch",
+    "unknown",
+    "vpn_gateway",
+]
+
+CableRole: TypeAlias = Literal["ha", "lan", "management", "power", "storage", "unknown", "wan"]
 
 
 class Issue(BaseModel):
@@ -27,7 +44,7 @@ class Device(BaseModel):
     id: str
     name: str
     hostname: str | None = None
-    type: str = "unknown"
+    type: DeviceType | str = "unknown"
     mgmtIp: str | None = None
     zone: str | None = None
     x: int = 0
@@ -45,7 +62,7 @@ class Cable(BaseModel):
     targetDeviceId: str
     targetPort: str | None = None
     cableType: str = "unknown"
-    connectionRole: str = "unknown"
+    connectionRole: CableRole | str = "unknown"
     label: str = "? -> ?"
     description: str | None = None
     confidence: float | None = None
@@ -63,7 +80,7 @@ class Topology(BaseModel):
     zones: list[str] = Field(default_factory=list)
     legend: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
-    aiSuggestions: dict | None = None
+    aiSuggestions: dict[str, Any] | None = None
 
 
 class ClarificationQuestion(BaseModel):

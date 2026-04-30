@@ -526,6 +526,8 @@ Core Pydantic models live in `backend/models/topology.py`.
 
 ### Install Backend Dependencies
 
+PowerShell:
+
 ```powershell
 python -m pip install -r backend\requirements.txt
 ```
@@ -536,7 +538,15 @@ Alternative workspace-local install:
 python -m pip install -r backend\requirements.txt --target backend\.vendor
 ```
 
+Bash:
+
+```bash
+python -m pip install -r backend/requirements.txt
+```
+
 ### Install Frontend Dependencies
+
+PowerShell:
 
 ```powershell
 Push-Location frontend
@@ -544,12 +554,29 @@ npm.cmd install
 Pop-Location
 ```
 
+Bash:
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
 ### Run Backend
+
+PowerShell:
 
 ```powershell
 Push-Location backend
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 Pop-Location
+```
+
+Bash:
+
+```bash
+cd backend
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
 Backend URL:
@@ -560,6 +587,8 @@ http://localhost:8001
 
 ### Run Frontend
 
+PowerShell:
+
 ```powershell
 Push-Location frontend
 $env:NEXT_PUBLIC_API_BASE="http://localhost:8001"
@@ -567,10 +596,39 @@ npm.cmd run dev -- -p 3001
 Pop-Location
 ```
 
+Bash:
+
+```bash
+cd frontend
+NEXT_PUBLIC_API_BASE=http://localhost:8001 npm run dev -- -p 3001
+```
+
 Frontend URL:
 
 ```text
 http://localhost:3001
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Docker exposes:
+
+- Frontend: `http://localhost:3001`
+- Backend: `http://localhost:8001`
+
+### Make Targets
+
+```bash
+make install
+make dev-backend
+make dev-frontend
+make test
+make typecheck
+make build
 ```
 
 ## Environment Variables
@@ -585,7 +643,11 @@ NEXT_PUBLIC_API_BASE=http://localhost:8001
 
 ```text
 GEMINI_API_KEY=optional Gemini API key for AI-assisted parsing
+PROJECT_TTL_HOURS=6
+PROJECT_CLEANUP_INTERVAL_MINUTES=30
 ```
+
+Copy `.env.example` when bootstrapping local development.
 
 ## Testing
 
@@ -603,6 +665,15 @@ npm.cmd run typecheck
 Pop-Location
 ```
 
+Run frontend tests and lint:
+
+```powershell
+Push-Location frontend
+npm.cmd run test
+npm.cmd run lint
+Pop-Location
+```
+
 Optional frontend build:
 
 ```powershell
@@ -611,24 +682,28 @@ npm.cmd run build
 Pop-Location
 ```
 
+GitHub Actions runs backend tests, frontend typecheck, lint, tests, and production build on push and pull request.
+
 ## Security Notes
 
 This MVP includes important local safeguards:
 
 - File extension validation.
 - File size limit.
+- Upload filename sanitization.
 - Random project IDs.
-- Local temporary upload/output folders.
+- Local temporary upload/output folders with 6-hour TTL cleanup by default.
 - No workbook execution.
 - No full workbook upload to AI services.
 - Optional IP redaction for AI helper.
+
+The `/downloads` static mount remains enabled for local MVP convenience only. The primary download path is `/api/projects/{project_id}/download`; production deployments should replace both with authenticated or signed downloads.
 
 Production hardening still needed:
 
 - Authentication.
 - Authorization.
 - Persistent database.
-- Expiring project cleanup.
 - Virus/malware scanning for uploads.
 - Signed download URLs.
 - Object storage with lifecycle policies.
@@ -638,6 +713,7 @@ Production hardening still needed:
 ## Known Limitations
 
 - Project state is stored in memory and disappears when the backend restarts.
+- Project files are automatically cleaned up after the configured TTL, so generated local files should be downloaded before expiry.
 - Generated diagrams are deterministic but not a replacement for final engineering review.
 - AI suggestions are optional and should be reviewed before applying.
 - Complex multi-site or multi-VRF topologies may need more rules.
@@ -695,4 +771,4 @@ Potential next phases:
 
 ## License
 
-No license has been selected yet. Treat this repository as private proprietary work until a license is added.
+All rights reserved. This repository is private proprietary software; see `LICENSE`.
