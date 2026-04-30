@@ -88,11 +88,11 @@ export function DeviceCorrectionPanel({
   }
 
   return (
-    <section className="mb-6 rounded-md border border-line bg-white p-4" data-topology-key={topologyKey}>
+    <section className="app-card mb-6 w-full p-4" data-topology-key={topologyKey}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-ink">Parsing corrections</h2>
-          <p className="text-sm text-slate-600">Change device type, remove extra devices, or add missing devices, then rebuild the topology.</p>
+          <p className="text-sm text-muted">Change device type, remove extra devices, or add missing devices, then rebuild the topology.</p>
         </div>
         <div className="flex gap-3">
           <SecondaryButton disabled={busy} onClick={resetFromTopology}>
@@ -105,9 +105,9 @@ export function DeviceCorrectionPanel({
         </div>
       </div>
 
-      <div className="table-scroll rounded-md border border-line">
+      <div className="table-shell">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-panel text-xs uppercase text-slate-500">
+          <thead className="table-head text-xs uppercase">
             <tr>
               <th className="px-3 py-2">Remove</th>
               <th className="px-3 py-2">Device</th>
@@ -118,19 +118,19 @@ export function DeviceCorrectionPanel({
           </thead>
           <tbody className="divide-y divide-line">
             {drafts.map((draft) => (
-              <tr key={draft.id} className={draft.remove ? "bg-red-50" : ""}>
+              <tr key={draft.id} className={draft.remove ? "bg-[var(--danger-soft)]" : "row-hover"}>
                 <td className="px-3 py-2">
                   <input
                     aria-label={`Remove ${draft.name}`}
                     checked={draft.remove}
-                    className="h-4 w-4"
+                    className="h-4 w-4 accent-[var(--accent)]"
                     type="checkbox"
                     onChange={(event) => updateDraft(draft.id, { remove: event.target.checked })}
                   />
                 </td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-44 rounded-md border border-line px-2"
+                    className="field-control h-9 w-44 px-2"
                     disabled={draft.remove}
                     value={draft.name}
                     onChange={(event) => updateDraft(draft.id, { name: event.target.value })}
@@ -138,7 +138,7 @@ export function DeviceCorrectionPanel({
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    className="focus-ring h-9 w-40 rounded-md border border-line bg-white px-2"
+                    className="field-control h-9 w-40 px-2"
                     disabled={draft.remove}
                     value={draft.type}
                     onChange={(event) => updateDraft(draft.id, { type: event.target.value })}
@@ -152,7 +152,7 @@ export function DeviceCorrectionPanel({
                 </td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-36 rounded-md border border-line px-2"
+                    className="field-control h-9 w-36 px-2"
                     disabled={draft.remove}
                     value={draft.mgmtIp}
                     onChange={(event) => updateDraft(draft.id, { mgmtIp: event.target.value })}
@@ -160,7 +160,7 @@ export function DeviceCorrectionPanel({
                 </td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-32 rounded-md border border-line px-2"
+                    className="field-control h-9 w-32 px-2"
                     disabled={draft.remove}
                     value={draft.zone}
                     onChange={(event) => updateDraft(draft.id, { zone: event.target.value })}
@@ -169,11 +169,11 @@ export function DeviceCorrectionPanel({
               </tr>
             ))}
             {addedDevices.map((device, index) => (
-              <tr key={`added-${index}`} className="bg-teal-50">
-                <td className="px-3 py-2 text-xs uppercase text-teal-700">Add</td>
+              <tr key={`added-${index}`} className="bg-[var(--accent-soft)]">
+                <td className="px-3 py-2 text-xs uppercase text-accent">Add</td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-44 rounded-md border border-line px-2"
+                    className="field-control h-9 w-44 px-2"
                     placeholder="Device name"
                     value={device.name}
                     onChange={(event) => updateAdded(index, { name: event.target.value })}
@@ -181,7 +181,7 @@ export function DeviceCorrectionPanel({
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    className="focus-ring h-9 w-40 rounded-md border border-line bg-white px-2"
+                    className="field-control h-9 w-40 px-2"
                     value={device.type}
                     onChange={(event) => updateAdded(index, { type: event.target.value })}
                   >
@@ -194,7 +194,7 @@ export function DeviceCorrectionPanel({
                 </td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-36 rounded-md border border-line px-2"
+                    className="field-control h-9 w-36 px-2"
                     placeholder="Optional"
                     value={device.mgmtIp}
                     onChange={(event) => updateAdded(index, { mgmtIp: event.target.value })}
@@ -202,7 +202,7 @@ export function DeviceCorrectionPanel({
                 </td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-32 rounded-md border border-line px-2"
+                    className="field-control h-9 w-32 px-2"
                     placeholder="Optional"
                     value={device.zone}
                     onChange={(event) => updateAdded(index, { zone: event.target.value })}

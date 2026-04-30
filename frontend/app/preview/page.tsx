@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Workflow } from "lucide-react";
+import { Download, Loader2, Workflow } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { IssueList } from "@/components/IssueList";
+import { LoadingPanel } from "@/components/LoadingPanel";
+import { PageHero } from "@/components/PageHero";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TopologyTables } from "@/components/TopologyTables";
 import { downloadDrawioFile, downloadUrl, generateDrawio } from "@/lib/api";
@@ -43,25 +45,30 @@ export default function PreviewPage() {
   if (!topology) {
     return (
       <AppShell>
-        <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-slate-600">No topology is ready for preview.</p>
+        <LoadingPanel loading={false} message="No topology is ready for preview." />
       </AppShell>
     );
   }
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <PageHero
+        eyebrow="Diagram preview"
+        title="Generate the editable HLD package"
+        description="TopoForge will produce Draw.io XML with devices, labels, connector anchors, reference tables, notes, and warnings."
+      />
+      <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
             <Workflow aria-hidden size={20} />
             Preview
           </h2>
-          <p className="text-sm text-slate-600">The generated Draw.io file will use this normalized topology and warning summary.</p>
+          <p className="text-sm text-muted">The generated Draw.io file will use this normalized topology and warning summary.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           {drawioUrl && (
             <a
-              className="focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-medium text-slate-700 ring-1 ring-line hover:bg-slate-50"
+              className="focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-sm font-medium text-ink shadow-sm transition hover:bg-panel"
               href={downloadUrl(drawioUrl)}
               download
             >
@@ -70,13 +77,13 @@ export default function PreviewPage() {
             </a>
           )}
           <PrimaryButton disabled={busy} onClick={generate}>
-            <Download aria-hidden size={16} />
+            {busy ? <Loader2 aria-hidden className="animate-spin" size={16} /> : <Download aria-hidden size={16} />}
             {drawioUrl ? "Regenerate" : "Generate .drawio"}
           </PrimaryButton>
         </div>
       </div>
-      {error && <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <div className="mb-6">
+      {error && <p className="status-error mb-4 px-4 py-3 text-sm">{error}</p>}
+      <div className="mb-6 w-full">
         <IssueList issues={topology.issues} />
       </div>
       <TopologyTables topology={topology} />

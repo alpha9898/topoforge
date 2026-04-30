@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FileJson, RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { PageHero } from "@/components/PageHero";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { downloadUrl } from "@/lib/api";
 import { loadDrawioUrl, loadTopology, resetProjectState } from "@/lib/project-state";
@@ -37,15 +38,20 @@ export default function ExportPage() {
 
   return (
     <AppShell>
-      <section className="rounded-md border border-line bg-white p-6">
+      <PageHero
+        eyebrow="Export bay"
+        title="Download the generated topology assets"
+        description="Save the editable Draw.io diagram and, when useful, the normalized topology JSON for auditing or reprocessing."
+      />
+      <section className="app-card w-full max-w-5xl p-6 text-center">
         <h2 className="text-lg font-semibold text-ink">Export files</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           {drawioUrl ? "The editable Draw.io diagram is ready." : "Generate the Draw.io file from the preview step first."}
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           {drawioUrl && (
             <a
-              className="focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white hover:bg-teal-800"
+              className="focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:brightness-95 active:scale-[0.98]"
               href={downloadUrl(drawioUrl)}
               download
             >

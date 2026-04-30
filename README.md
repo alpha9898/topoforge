@@ -137,7 +137,14 @@ Editable .drawio file
 
 ## Frontend Features
 
-The frontend is a practical wizard-style app rather than a marketing landing page.
+The frontend is a practical wizard-style app with a futuristic operational workspace style rather than a marketing landing page. The UI uses centered hero panels, translucent surfaces, subtle grid/scan-line motion, responsive wizard navigation, and a persistent light/dark theme toggle.
+
+Theme behavior:
+
+- Theme preference is stored in `localStorage` as `topoforge-theme`.
+- `next/script` applies the saved theme before hydration to reduce visible theme flash.
+- `ThemeProvider` keeps the first render deterministic and then syncs the stored theme after mount.
+- `ThemeToggle` is available in the top-right app shell on every wizard page.
 
 Pages:
 
@@ -150,8 +157,12 @@ Pages:
 Important UI components:
 
 - `AiSuggestionsPanel` shows suggested alias merges, type changes, ignored rows, and duplicate warnings.
+- `AppShell` provides the centered command-center layout, wizard progress, and theme toggle.
 - `DeviceCorrectionPanel` lets users rename, retype, remove, or add devices.
+- `LoadingPanel` provides consistent loading and empty states.
+- `PageHero` provides the centered futuristic page header used across the wizard.
 - `StandardPathPanel` lets users review and edit Admin, VPN, Internet, ISP-1, ISP-2, and OOB devices.
+- `ThemeProvider` and `ThemeToggle` manage the persistent light/dark experience.
 - `TopologyTables` displays the normalized devices and cables before generation.
 
 ## Backend Features
@@ -740,6 +751,10 @@ npm.cmd run dev -- -p 3001
 ### Generate opens XML in the browser
 
 The app uses the `/download` endpoint with an attachment response. Regenerate the diagram from the preview page after backend restart.
+
+### Theme or hydration warnings appear in development
+
+The frontend initializes the saved theme with Next.js `Script` using `strategy="beforeInteractive"` and then syncs state in `ThemeProvider` after mount. If an old dev overlay remains visible after pulling changes, refresh the browser tab and restart the frontend dev server.
 
 ### AI helper does not produce Gemini suggestions
 

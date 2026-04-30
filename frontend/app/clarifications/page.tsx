@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Save } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { LoadingPanel } from "@/components/LoadingPanel";
+import { PageHero } from "@/components/PageHero";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { getClarifications, submitClarifications } from "@/lib/api";
 import { loadProjectId, saveTopology } from "@/lib/project-state";
@@ -52,12 +54,17 @@ export default function ClarificationsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <PageHero
+        eyebrow="Clarification matrix"
+        title="Resolve ambiguity without stopping the pipeline"
+        description="Answer only the uncertain items. Unresolved warnings stay visible and the Draw.io output can still be generated."
+      />
+      <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-ink">Clarifications</h2>
-          <p className="text-sm text-slate-600">{questions.length} questions generated from incomplete or ambiguous data</p>
+          <p className="text-sm text-muted">{questions.length} questions generated from incomplete or ambiguous data</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <SecondaryButton onClick={() => router.push("/preview")}>
             <ArrowRight aria-hidden size={16} />
             Skip
@@ -68,19 +75,19 @@ export default function ClarificationsPage() {
           </PrimaryButton>
         </div>
       </div>
-      {error && <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {error && <p className="status-error mb-4 px-4 py-3 text-sm">{error}</p>}
       {busy ? (
-        <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-slate-600">Loading questions...</p>
+        <LoadingPanel message="Loading questions..." />
       ) : questions.length === 0 ? (
-        <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-slate-600">No clarification questions are needed.</p>
+        <p className="status-success px-4 py-3 text-sm">No clarification questions are needed.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="w-full space-y-3">
           {questions.map((question) => (
-            <label key={question.id} className="block rounded-md border border-line bg-white p-4">
+            <label key={question.id} className="app-card block p-4 shadow-none">
               <span className="text-sm font-medium text-ink">{question.message}</span>
               {question.options.length > 0 ? (
                 <select
-                  className="focus-ring mt-3 h-10 w-full rounded-md border border-line bg-white px-3 text-sm"
+                  className="field-control mt-3 h-10 w-full px-3 text-sm"
                   value={answers[question.id] ?? ""}
                   onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))}
                 >
@@ -92,7 +99,7 @@ export default function ClarificationsPage() {
                 </select>
               ) : (
                 <input
-                  className="focus-ring mt-3 h-10 w-full rounded-md border border-line px-3 text-sm"
+                  className="field-control mt-3 h-10 w-full px-3 text-sm"
                   value={answers[question.id] ?? ""}
                   onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))}
                 />

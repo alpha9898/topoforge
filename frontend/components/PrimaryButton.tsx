@@ -6,7 +6,7 @@ export function PrimaryButton({ className = "", ...props }: ButtonHTMLAttributes
   return (
     <button
       {...props}
-      className={`focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400 ${className}`}
+      className={`focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--accent-strong)] bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${className}`}
     />
   );
 }
@@ -15,7 +15,7 @@ export function SecondaryButton({ className = "", ...props }: ButtonHTMLAttribut
   return (
     <button
       {...props}
-      className={`focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 ${className}`}
+      className={`focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface/80 px-4 text-sm font-medium text-ink shadow-sm backdrop-blur transition hover:border-[var(--line-strong)] hover:bg-panel active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${className}`}
     />
   );
 }

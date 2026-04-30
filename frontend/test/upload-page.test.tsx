@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import UploadPage from "@/app/upload/page";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/upload",
@@ -21,7 +22,11 @@ vi.mock("@/lib/project-state", () => ({
 
 describe("UploadPage", () => {
   it("shows a validation error for unsupported files", () => {
-    render(<UploadPage />);
+    render(
+      <ThemeProvider>
+        <UploadPage />
+      </ThemeProvider>
+    );
     const input = document.querySelector("input[type='file']") as HTMLInputElement;
 
     fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });

@@ -70,11 +70,11 @@ export function StandardPathPanel({
   }
 
   return (
-    <section className="mb-6 rounded-md border border-line bg-white p-4">
+    <section className="app-card mb-6 w-full p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-ink">Standard path review</h2>
-          <p className="text-sm text-slate-600">Review or rename Admin, VPN, Internet, ISP, and OOB before generating the diagram.</p>
+          <p className="text-sm text-muted">Review or rename Admin, VPN, Internet, ISP, and OOB before generating the diagram.</p>
         </div>
         <div className="flex gap-3">
           <SecondaryButton disabled={busy} onClick={() => setDrafts(buildDrafts(topology))}>
@@ -87,9 +87,9 @@ export function StandardPathPanel({
         </div>
       </div>
 
-      <div className="table-scroll rounded-md border border-line">
+      <div className="table-shell">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-panel text-xs uppercase text-slate-500">
+          <thead className="table-head text-xs uppercase">
             <tr>
               <th className="px-3 py-2">Remove</th>
               <th className="px-3 py-2">Role</th>
@@ -99,12 +99,12 @@ export function StandardPathPanel({
           </thead>
           <tbody className="divide-y divide-line">
             {drafts.map((draft) => (
-              <tr key={draft.id} className={draft.remove ? "bg-red-50" : ""}>
+              <tr key={draft.id} className={draft.remove ? "bg-[var(--danger-soft)]" : "row-hover"}>
                 <td className="px-3 py-2">
                   <input
                     aria-label={`Remove ${draft.label}`}
                     checked={draft.remove}
-                    className="h-4 w-4"
+                    className="h-4 w-4 accent-[var(--accent)]"
                     disabled={!draft.exists}
                     type="checkbox"
                     onChange={(event) => updateDraft(draft.id, { remove: event.target.checked })}
@@ -113,13 +113,13 @@ export function StandardPathPanel({
                 <td className="px-3 py-2 font-medium text-ink">{draft.label}</td>
                 <td className="px-3 py-2">
                   <input
-                    className="focus-ring h-9 w-56 rounded-md border border-line px-2"
+                    className="field-control h-9 w-56 px-2"
                     disabled={draft.remove}
                     value={draft.name}
                     onChange={(event) => updateDraft(draft.id, { name: event.target.value })}
                   />
                 </td>
-                <td className="px-3 py-2 text-slate-700">{draft.type}</td>
+                <td className="px-3 py-2 text-muted">{draft.type}</td>
               </tr>
             ))}
           </tbody>

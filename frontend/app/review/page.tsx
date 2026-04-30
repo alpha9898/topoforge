@@ -7,6 +7,8 @@ import { AiSuggestionsPanel } from "@/components/AiSuggestionsPanel";
 import { AppShell } from "@/components/AppShell";
 import { DeviceCorrectionPanel } from "@/components/DeviceCorrectionPanel";
 import { IssueList } from "@/components/IssueList";
+import { LoadingPanel } from "@/components/LoadingPanel";
+import { PageHero } from "@/components/PageHero";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { StandardPathPanel } from "@/components/StandardPathPanel";
 import { TopologyTables } from "@/components/TopologyTables";
@@ -83,7 +85,7 @@ export default function ReviewPage() {
   if (!topology) {
     return (
       <AppShell>
-        <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-slate-600">No parsed topology is loaded.</p>
+        <LoadingPanel loading={false} message="No parsed topology is loaded." />
       </AppShell>
     );
   }
@@ -93,16 +95,28 @@ export default function ReviewPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <PageHero
+        eyebrow="Parse review"
+        title="Clean the topology before the diagram is forged"
+        description="Check detected devices, AI suggestions, standard path devices, and every parsed connection before generation."
+      >
+        <div className="mx-auto flex max-w-2xl flex-wrap justify-center gap-3 text-sm">
+          <span className="app-panel px-3 py-2 text-muted">{topology.devices.length} devices</span>
+          <span className="app-panel px-3 py-2 text-muted">{topology.cables.length} connections</span>
+          <span className="app-panel px-3 py-2 text-warning">{warnings} warnings</span>
+          <span className="app-panel px-3 py-2 text-danger">{errors} errors</span>
+        </div>
+      </PageHero>
+      <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-ink">Review parsed topology</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             {topology.devices.length} devices, {topology.cables.length} connections, {warnings} warnings, {errors} errors
           </p>
         </div>
-        <div className="flex gap-3">
-          <label className="flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm text-slate-700">
-            <input checked={includeIpsInAi} className="h-4 w-4" type="checkbox" onChange={(event) => setIncludeIpsInAi(event.target.checked)} />
+        <div className="flex flex-wrap gap-3">
+          <label className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm text-muted shadow-sm">
+            <input checked={includeIpsInAi} className="h-4 w-4 accent-[var(--accent)]" type="checkbox" onChange={(event) => setIncludeIpsInAi(event.target.checked)} />
             Include IPs in AI
           </label>
           <SecondaryButton disabled={busy} onClick={runAiHelper}>
@@ -121,7 +135,7 @@ export default function ReviewPage() {
       <div className="mb-6">
         <IssueList issues={topology.issues} />
       </div>
-      {error && <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {error && <p className="status-error mb-4 px-4 py-3 text-sm">{error}</p>}
       <AiSuggestionsPanel suggestions={topology.aiSuggestions} />
       <StandardPathPanel topology={topology} busy={busy} onApply={applyCorrections} />
       <DeviceCorrectionPanel topology={topology} busy={busy} onApply={applyCorrections} />
