@@ -285,3 +285,136 @@ def test_port_anchor_intelligence_is_written_to_drawio_xml():
     cable_cell = next(cell for cell in root.iter("mxCell") if cell.attrib.get("id") == "cable-001")
 
     assert "exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;" in cable_cell.attrib["style"]
+
+
+def test_collision_avoidance_increases_column_spacing_for_dense_rows():
+    simple = layout_topology(
+        Topology(
+            devices=[Device(id="sw1", name="SW1", type="switch"), Device(id="sw2", name="SW2", type="switch")],
+            cables=[Cable(id="simple", sourceDeviceId="sw1", sourcePort="1", targetDeviceId="sw2", targetPort="1", cableType="ethernet", connectionRole="lan")],
+        )
+    )
+    dense_devices = [Device(id="sw1", name="SW1", type="switch"), Device(id="sw2", name="SW2", type="switch")]
+    dense_devices.extend(Device(id=f"server{index}", name=f"Server-{index}", type="server") for index in range(1, 7))
+    dense = layout_topology(
+        Topology(
+            devices=dense_devices,
+            cables=[
+                Cable(
+                    id=f"dense-{index}",
+                    sourceDeviceId="sw1",
+                    sourcePort=f"Gi1/0/{index}",
+                    targetDeviceId=f"server{index}",
+                    targetPort="eth0",
+                    cableType="ethernet",
+                    connectionRole="lan",
+                )
+                for index in range(1, 7)
+            ],
+        )
+    )
+    simple_switches = sorted([device for device in simple.devices if device.type == "switch"], key=lambda item: item.x)
+    dense_switches = sorted([device for device in dense.devices if device.type == "switch"], key=lambda item: item.x)
+
+    assert dense_switches[1].x - dense_switches[0].x > simple_switches[1].x - simple_switches[0].x
+
+
+def test_collision_avoidance_increases_row_spacing_for_dense_inter_row_links():
+    simple = layout_topology(
+        Topology(
+            devices=[Device(id="fw1", name="Firewall-1", type="firewall"), Device(id="sw1", name="SW1", type="switch")],
+            cables=[Cable(id="link-1", sourceDeviceId="fw1", sourcePort="eth1", targetDeviceId="sw1", targetPort="49", cableType="ethernet", connectionRole="lan")],
+        )
+    )
+    dense = layout_topology(
+        Topology(
+            devices=[Device(id="fw1", name="Firewall-1", type="firewall"), Device(id="sw1", name="SW1", type="switch")],
+            cables=[
+                Cable(id=f"link-{index}", sourceDeviceId="fw1", sourcePort=f"eth{index}", targetDeviceId="sw1", targetPort=str(48 + index), cableType="ethernet", connectionRole="lan")
+                for index in range(1, 7)
+            ],
+        )
+    )
+    simple_gap = next(device.y for device in simple.devices if device.id == "sw1") - next(device.y for device in simple.devices if device.id == "fw1")
+    dense_gap = next(device.y for device in dense.devices if device.id == "sw1") - next(device.y for device in dense.devices if device.id == "fw1")
+
+    assert dense_gap > simple_gap
+
+
+def test_auto_layout_centers_high_degree_devices_and_keeps_pairs_adjacent():
+    topology = layout_topology(
+        Topology(
+            devices=[
+                Device(id="sw1", name="SW1", type="switch"),
+                Device(id="sw2", name="SW2", type="switch"),
+                Device(id="sw3", name="SW3", type="switch"),
+                Device(id="server1", name="Server-1", type="server"),
+                Device(id="server2", name="Server-2", type="server"),
+                Device(id="server3", name="Server-3", type="server"),
+            ],
+            cables=[
+                Cable(id=f"server-{index}", sourceDeviceId="sw2", sourcePort=f"Gi1/0/{index}", targetDeviceId=f"server{index}", targetPort="eth0", cableType="ethernet", connectionRole="lan")
+                for index in range(1, 4)
+            ],
+        )
+    )
+    switches = sorted([device for device in topology.devices if device.type == "switch"], key=lambda item: item.x)
+
+    assert switches[1].id == "sw2"
+
+    firewall_topology = layout_topology(
+        Topology(
+            devices=[Device(id=f"fw{index}", name=f"Firewall-{index}", type="firewall") for index in range(1, 5)],
+            cables=[],
+        )
+    )
+    firewalls = [device.id for device in sorted(firewall_topology.devices, key=lambda item: item.x)]
+
+    assert abs(firewalls.index("fw1") - firewalls.index("fw2")) == 1
+
+
+def test_parallel_cables_receive_distinct_waypoints():
+    topology = layout_topology(
+        Topology(
+            devices=[Device(id="fw1", name="Firewall-1", type="firewall"), Device(id="sw1", name="SW1", type="switch")],
+            cables=[
+                Cable(id=f"cable-00{index}", sourceDeviceId="fw1", sourcePort=f"eth{index}", targetDeviceId="sw1", targetPort=str(48 + index), cableType="ethernet", connectionRole="lan")
+                for index in range(1, 5)
+            ],
+        )
+    )
+    xml = generate_drawio_xml(topology)
+    root = ET.fromstring(xml)
+    points = [
+        (point.attrib["x"], point.attrib["y"])
+        for cable_id in ["cable-001", "cable-002", "cable-003", "cable-004"]
+        for cell in root.iter("mxCell")
+        if cell.attrib.get("id") == cable_id
+        for point in cell.iter("mxPoint")
+        if "as" not in point.attrib
+    ]
+
+    assert len(set(points)) == 4
+
+
+def test_cable_reference_includes_expanded_columns_and_vlan_values():
+    parsed = {
+        "raw_devices": [{"name": "Firewall-1"}, {"name": "SW1"}],
+        "raw_connections": [
+            {"sourceDevice": "Firewall-1", "sourcePort": "eth1", "targetDevice": "SW1", "targetPort": "Gi1/0/1", "cableType": "ethernet", "role": "VLAN 603"},
+            {"sourceDevice": "Firewall-1", "sourcePort": "eth2", "targetDevice": "SW1", "targetPort": "Gi1/0/2", "cableType": "ethernet", "role": "lan"},
+        ],
+        "issues": [],
+    }
+    topology = layout_topology(validate_topology(build_topology(parsed)))
+    xml = generate_drawio_xml(topology)
+    root = ET.fromstring(xml)
+    cells = {cell.attrib["id"]: cell for cell in root.iter("mxCell") if "id" in cell.attrib}
+
+    assert "Source Device" in xml
+    assert "Source Port" in xml
+    assert "Destination Device" in xml
+    assert "Destination Port" in xml
+    assert "VLAN" in xml
+    assert "VLAN 603" in xml
+    assert cells["cable-reference-row-1-7"].attrib["value"] == "-"

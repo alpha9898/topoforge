@@ -28,10 +28,10 @@ The generated diagram includes:
 - Port-to-port cable labels.
 - Rounded 3px Draw.io connectors with intelligent side anchors.
 - Device-aware port placement for WAN, LAN, management/OOB, HA, server data, and power links.
-- Deterministic top-to-bottom HLD layout.
+- Deterministic top-to-bottom HLD layout with density-aware collision avoidance.
 - Standard external path generation: Admin -> VPN -> Internet -> ISP -> Firewall.
 - OOB management device and management connections.
-- Cable reference tables in the diagram.
+- Expanded cable reference tables with source, destination, ports, role, color, VLAN, and notes.
 - A visual legend for cable colors and dashed/solid meanings.
 - Switch/OOB port summary tables.
 - Notes and issue summaries inside the generated diagram.
@@ -333,7 +333,15 @@ Manual corrections take priority over AI suggestions.
 6. Power / PDU.
 7. Unknown / other.
 
-The layout uses widened row and column spacing so devices are farther apart and cable paths are easier to inspect.
+The layout uses density-aware spacing so devices are farther apart when cable pressure is high. TopoForge calculates device degree, inter-row link density, and same-row fan-out before assigning coordinates.
+
+Collision avoidance behavior:
+
+- Column spacing grows for dense rows with many device connections.
+- Row spacing grows when many links cross between adjacent HLD layers.
+- High-degree devices are placed closer to the center of their row.
+- Redundant pairs such as `Firewall-1` / `Firewall-2` and `SW1` / `SW2` stay adjacent where possible.
+- Parallel cables between the same devices and busy rows receive wider waypoint offsets to reduce overlap.
 
 Port Anchor Intelligence chooses connector exit and entry points based on device type, port role, cable role, peer type, and relative position. This keeps the generated HLD closer to how network diagrams are normally read:
 
@@ -355,10 +363,12 @@ The output includes:
 - Port labels.
 - `exitX`, `exitY`, `entryX`, and `entryY` connector anchors.
 - Cable colors by role.
-- Cable reference table.
+- Expanded cable reference table with source device, source port, destination device, destination port, role, source-device color, VLAN, and notes.
 - Cable color legend.
 - Switch/OOB port summary.
 - Notes and warning summary.
+
+VLAN handling is best-effort for the MVP. The generator first uses the cable VLAN field, then falls back to source or destination port VLAN, then to VLAN-like connection role values such as `603` or `VLAN 603`. If no VLAN can be inferred, the table shows `-`.
 
 Cable colors:
 

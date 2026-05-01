@@ -95,11 +95,11 @@ def generate_drawio_xml(topology: Topology) -> str:
         _add_device(root, device)
     device_map = {device.id: device for device in topology.devices}
     source_color_map = _source_color_map(topology.devices)
-    cable_offsets = _parallel_cable_offsets(topology.cables)
+    cable_offsets = _parallel_cable_offsets(topology.cables, device_map)
     for cable in topology.cables:
         _add_cable(root, cable, device_map, cable_offsets.get(cable.id, 0), source_color_map)
     _add_cable_reference(root, topology, device_map, reference_x, REFERENCE_START_Y, source_color_map)
-    _add_legend(root, topology, reference_x + 620, REFERENCE_START_Y)
+    _add_legend(root, topology, reference_x + _cable_reference_width() + 40, REFERENCE_START_Y)
     _add_switch_port_summary(root, topology, device_map, reference_x, _cable_reference_bottom(topology) + REFERENCE_GAP)
     _add_source_color_table(root, topology, device_map, source_color_map, reference_x, _source_color_table_y(topology))
     _add_notes(root, topology, notes_y)
@@ -172,21 +172,35 @@ def _add_cable(root: ET.Element, cable: Cable, devices: dict[str, Device], offse
         ET.SubElement(points, "mxPoint", {"x": str(waypoint[0]), "y": str(waypoint[1])})
 
 
-def _parallel_cable_offsets(cables: list[Cable]) -> dict[str, int]:
+def _parallel_cable_offsets(cables: list[Cable], devices: dict[str, Device]) -> dict[str, int]:
     grouped: dict[tuple[str, str], list[Cable]] = {}
+    row_grouped: dict[tuple[int, int], list[Cable]] = {}
     for cable in cables:
         pair = tuple(sorted((cable.sourceDeviceId, cable.targetDeviceId)))
         grouped.setdefault(pair, []).append(cable)
+        source = devices.get(cable.sourceDeviceId)
+        target = devices.get(cable.targetDeviceId)
+        if source and target:
+            row_pair = tuple(sorted((source.y, target.y)))
+            row_grouped.setdefault(row_pair, []).append(cable)
 
     offsets: dict[str, int] = {}
     for pair_cables in grouped.values():
         if len(pair_cables) == 1:
             offsets[pair_cables[0].id] = 0
             continue
-        step = 28
+        step = min(54, 28 + len(pair_cables) * 3)
         start = -((len(pair_cables) - 1) * step) // 2
         for index, cable in enumerate(pair_cables):
             offsets[cable.id] = start + index * step
+    for row_cables in row_grouped.values():
+        if len(row_cables) <= 2:
+            continue
+        row_cables.sort(key=lambda item: item.id)
+        lane_step = min(18, 6 + len(row_cables) // 2)
+        start = -((len(row_cables) - 1) * lane_step) // 2
+        for index, cable in enumerate(row_cables):
+            offsets[cable.id] = offsets.get(cable.id, 0) + start + index * lane_step
     return offsets
 
 
@@ -234,15 +248,16 @@ def _add_legend(root: ET.Element, topology: Topology, x: int, y: int) -> None:
 def _add_cable_reference(root: ET.Element, topology: Topology, devices: dict[str, Device], x: int, y: int, source_color_map: dict[str, tuple[str, str]]) -> None:
     columns = [
         ("ID", 34),
-        ("Source", 112),
-        ("Src Port", 60),
-        ("Target", 112),
-        ("Dst Port", 60),
+        ("Source Device", 132),
+        ("Source Port", 72),
+        ("Destination Device", 150),
+        ("Destination Port", 86),
         ("Role", 72),
-        ("Color", 70),
-        ("Notes", 130),
+        ("Color", 120),
+        ("VLAN", 70),
+        ("Notes", 170),
     ]
-    width = sum(column[1] for column in columns)
+    width = _cable_reference_width()
     _add_box(root, "cable-reference-box", x, y, width, _cable_reference_height(topology))
     _add_text(root, "cable-reference-title", "TABLE 1: CABLE REFERENCE", x, y, width, 24, _table_title_style(TABLE_HEADER_FILL))
     header_y = y + 24
@@ -257,13 +272,14 @@ def _add_cable_reference(root: ET.Element, topology: Topology, devices: dict[str
         role = cable.connectionRole or cable.cableType or "unknown"
         row = [
             f"A{index + 1}",
-            _clip(source.name if source else cable.sourceDeviceId, 18),
-            _clip(cable.sourcePort or "?", 10),
-            _clip(target.name if target else cable.targetDeviceId, 18),
-            _clip(cable.targetPort or "?", 10),
+            _clip(source.name if source else cable.sourceDeviceId, 22),
+            _clip(cable.sourcePort or "?", 12),
+            _clip(target.name if target else cable.targetDeviceId, 24),
+            _clip(cable.targetPort or "?", 14),
             _clip(role, 12),
-            _cable_owner_color_label(cable, devices, source_color_map),
-            _clip(cable.description or cable.label, 28),
+            _clip(_cable_owner_color_label(cable, devices, source_color_map), 18),
+            _clip(_cable_vlan(cable, source, target), 10),
+            _clip(cable.description or cable.label, 36),
         ]
         row_y = y + 24 + TABLE_ROW_HEIGHT + index * TABLE_ROW_HEIGHT
         fill = "#FFFFFF" if index % 2 == 0 else "#F7FBFE"
@@ -350,6 +366,10 @@ def _cable_reference_height(topology: Topology) -> int:
     return 24 + TABLE_ROW_HEIGHT + max(1, len(topology.cables)) * TABLE_ROW_HEIGHT
 
 
+def _cable_reference_width() -> int:
+    return 906
+
+
 def _cable_reference_bottom(topology: Topology) -> int:
     return REFERENCE_START_Y + _cable_reference_height(topology)
 
@@ -392,6 +412,43 @@ def _endpoint_label(device: Device | None, port: str | None) -> str:
     device_name = device.name if device else "Unknown device"
     port_name = port or "?"
     return f"{device_name} {port_name}"
+
+
+def _cable_vlan(cable: Cable, source: Device | None, target: Device | None) -> str:
+    direct = _normalize_vlan_label(getattr(cable, "vlan", None))
+    if direct:
+        return direct
+    source_vlan = _port_vlan(source, cable.sourcePort)
+    if source_vlan:
+        return source_vlan
+    target_vlan = _port_vlan(target, cable.targetPort)
+    if target_vlan:
+        return target_vlan
+    role_vlan = _normalize_vlan_label(cable.connectionRole)
+    return role_vlan or "-"
+
+
+def _port_vlan(device: Device | None, port_name: str | None) -> str | None:
+    if not device or not port_name:
+        return None
+    for port in device.ports:
+        if port.name == port_name:
+            return _normalize_vlan_label(port.vlan)
+    return None
+
+
+def _normalize_vlan_label(value: str | None) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    lower = text.lower()
+    if lower in {"unknown", "none", "nan", "lan", "wan", "management", "power", "ha", "storage", "ethernet"}:
+        return None
+    if lower.isdigit() and len(lower) <= 4:
+        return text
+    if "vlan" in lower:
+        return text
+    return None
 
 
 def _port_summary_rows(topology: Topology, devices: dict[str, Device], switches: list[Device]) -> list[list[str]]:

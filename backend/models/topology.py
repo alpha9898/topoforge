@@ -63,6 +63,7 @@ class Cable(BaseModel):
     targetPort: str | None = None
     cableType: str = "unknown"
     connectionRole: CableRole | str = "unknown"
+    vlan: str | None = None
     label: str = "? -> ?"
     description: str | None = None
     confidence: float | None = None

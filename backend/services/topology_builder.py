@@ -100,8 +100,9 @@ def build_topology(parsed: dict[str, Any], title: str = "TopoForge - High Level 
         target_port = normalize_port(raw.get("targetPort"))
         cable_type = _normalize_cable_type(raw.get("cableType"), source, target, source_port, target_port)
         role = _infer_connection_role(raw.get("role"), cable_type, source_port, target_port, source, target)
-        _add_port(source, source_port, role)
-        _add_port(target, target_port, role)
+        vlan = _normalize_vlan(raw.get("vlan")) or _normalize_vlan(raw.get("role"))
+        _add_port(source, source_port, role, vlan)
+        _add_port(target, target_port, role, vlan)
 
         cable_number = len(cables) + 1
         cables.append(Cable(
@@ -112,6 +113,7 @@ def build_topology(parsed: dict[str, Any], title: str = "TopoForge - High Level 
             targetPort=target_port,
             cableType=cable_type,
             connectionRole=role,
+            vlan=vlan,
             label=f"{source.name} {source_port or '?'} -> {target.name} {target_port or '?'}",
         ))
 
@@ -128,7 +130,7 @@ def build_topology(parsed: dict[str, Any], title: str = "TopoForge - High Level 
     return topology
 
 
-def _add_port(device: Device, port_name: str | None, role: str) -> None:
+def _add_port(device: Device, port_name: str | None, role: str, vlan: str | None = None) -> None:
     if not port_name:
         return
     if any(port.name == port_name for port in device.ports):
@@ -140,7 +142,7 @@ def _add_port(device: Device, port_name: str | None, role: str) -> None:
             name=port_name,
             side="auto",
             order=len(device.ports) + 1,
-            vlan=role if role not in {"unknown", ""} else None,
+            vlan=vlan or (role if _is_vlan_like(role) else None),
         )
     )
 
@@ -175,6 +177,20 @@ def _infer_connection_role(raw: str | None, cable_type: str, source_port: str | 
     if "ha" in text or "sync" in text:
         return "ha"
     return "lan" if cable_type == "ethernet" else cable_type
+
+
+def _normalize_vlan(raw: str | None) -> str | None:
+    text = str(raw or "").replace("\xa0", " ").strip()
+    if not text or text.lower() in {"unknown", "nan", "none", "lan", "wan", "management", "power", "ha", "storage", "ethernet"}:
+        return None
+    if _is_vlan_like(text):
+        return text
+    return None
+
+
+def _is_vlan_like(value: str | None) -> bool:
+    text = str(value or "").strip().lower()
+    return bool(re.fullmatch(r"\d{1,4}", text) or re.search(r"\bvlan\s*\d{1,4}\b", text))
 
 
 def _device_key(name: str) -> str:
