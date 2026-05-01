@@ -11,9 +11,11 @@
 ![Draw.io](https://img.shields.io/badge/Draw.io-mxGraph-F08705?logo=diagramsdotnet&logoColor=white)
 ![Pytest](https://img.shields.io/badge/Pytest-tested-0A9EDC?logo=pytest&logoColor=white)
 
-TopoForge is a full-stack MVP that converts Low-Level Design (LLD) Excel or CSV data into a clean, editable High-Level Design (HLD) network diagram in `.drawio` format.
+TopoForge is a full-stack web app that converts Low-Level Design (LLD) Excel or CSV data into a clean, editable High-Level Design (HLD) network diagram in `.drawio` format.
 
 The application is designed for network, DevOps, infrastructure, cloud, and data center engineers who need to turn structured LLD data into professional diagrams without manually redrawing every device, port, and cable.
+
+Open `http://localhost:3001` to reach the landing page. Click **Get Started** or **Upload your spreadsheet** to enter the five-step wizard.
 
 ## What It Does
 
@@ -102,6 +104,7 @@ Editable .drawio file
 │
 ├── frontend/
 │   ├── app/
+│   │   ├── page.tsx              ← landing page
 │   │   ├── clarifications/
 │   │   ├── export/
 │   │   ├── preview/
@@ -112,8 +115,12 @@ Editable .drawio file
 │   │   ├── AppShell.tsx
 │   │   ├── DeviceCorrectionPanel.tsx
 │   │   ├── IssueList.tsx
+│   │   ├── LoadingPanel.tsx
+│   │   ├── PageHero.tsx
 │   │   ├── PrimaryButton.tsx
 │   │   ├── StandardPathPanel.tsx
+│   │   ├── ThemeProvider.tsx
+│   │   ├── ThemeToggle.tsx
 │   │   └── TopologyTables.tsx
 │   └── lib/
 │       ├── api.ts
@@ -125,19 +132,22 @@ Editable .drawio file
 
 ## User Workflow
 
-1. Open the upload page.
-2. Upload an `.xlsx`, `.xls`, or `.csv` LLD file.
-3. Optionally enable the AI parsing helper.
-4. Review detected devices, connections, issues, and AI suggestions.
-5. Apply device corrections, remove duplicates, rename standard path devices, or add missing devices.
-6. Answer clarification questions for unknown types, missing ports, cable types, and conflicts.
-7. Generate the Draw.io file.
-8. The browser automatically downloads the `.drawio` output.
-9. Open the file in diagrams.net, Draw.io Desktop, or a Draw.io-compatible VS Code extension.
+1. Open `http://localhost:3001` — the landing page introduces the tool and links to the wizard.
+2. Click **Get Started** to reach the upload step.
+3. Upload an `.xlsx`, `.xls`, or `.csv` LLD file.
+4. Optionally enable the AI parsing helper.
+5. Review detected devices, connections, issues, and AI suggestions.
+6. Apply device corrections, remove duplicates, rename standard path devices, or add missing devices.
+7. Answer clarification questions for unknown types, missing ports, cable types, and conflicts.
+8. Generate the Draw.io file.
+9. The browser automatically downloads the `.drawio` output.
+10. Open the file in diagrams.net, Draw.io Desktop, or a Draw.io-compatible VS Code extension.
 
 ## Frontend Features
 
-The frontend is a practical wizard-style app with a futuristic operational workspace style rather than a marketing landing page. The UI uses centered hero panels, translucent surfaces, subtle grid/scan-line motion, responsive wizard navigation, and a persistent light/dark theme toggle.
+The frontend consists of a marketing landing page at `/` followed by a five-step wizard. The landing page uses staggered scroll-triggered animations, an animated SVG network topology diagram, and animated count-up statistics — all built with the same Tailwind design tokens as the wizard so the transition feels seamless.
+
+The wizard uses centered panels, translucent surfaces, responsive step navigation with directional slide transitions, and a persistent light/dark theme toggle.
 
 Theme behavior:
 
@@ -148,6 +158,7 @@ Theme behavior:
 
 Pages:
 
+- `/` - landing page with animated SVG topology diagram, how-it-works steps, feature cards, and count-up stats.
 - `/upload` - file picker, upload validation, optional AI helper settings.
 - `/review` - device table, connection table, issues, AI suggestions, manual correction tools.
 - `/clarifications` - editable question list for ambiguous parsed data.

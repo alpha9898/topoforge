@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FileJson, RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { PageHero } from "@/components/PageHero";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { downloadUrl } from "@/lib/api";
 import { loadDrawioUrl, loadTopology, resetProjectState } from "@/lib/project-state";
@@ -38,37 +37,52 @@ export default function ExportPage() {
 
   return (
     <AppShell>
-      <PageHero
-        eyebrow="Export bay"
-        title="Download the generated topology assets"
-        description="Save the editable Draw.io diagram and, when useful, the normalized topology JSON for auditing or reprocessing."
-      />
-      <section className="app-card w-full max-w-5xl p-6 text-center">
-        <h2 className="text-lg font-semibold text-ink">Export files</h2>
-        <p className="mt-1 text-sm text-muted">
-          {drawioUrl ? "The editable Draw.io diagram is ready." : "Generate the Draw.io file from the preview step first."}
+      <div className="mb-6 w-full">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">Step 5</p>
+        <h2 className="text-xl font-semibold text-[var(--text)]">Export</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          {drawioUrl
+            ? "Your Draw.io diagram is ready to download."
+            : "Generate the diagram from the preview step before exporting."}
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          {drawioUrl && (
+      </div>
+
+      <div className="app-card anim-fade-in-up w-full p-5">
+        <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">Download files</h3>
+        <p className="mb-4 text-sm text-[var(--muted)]">
+          Open the .drawio file in diagrams.net, Draw.io Desktop, or the Draw.io VS Code extension.
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          {drawioUrl ? (
             <a
-              className="focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:brightness-95 active:scale-[0.98]"
               href={downloadUrl(drawioUrl)}
               download
+              className="focus-ring inline-flex h-9 items-center gap-2 rounded-md bg-[var(--accent)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-strong)]"
             >
-              <Download aria-hidden size={16} />
+              <Download aria-hidden size={14} />
               Download .drawio
             </a>
+          ) : (
+            <PrimaryButton disabled>
+              <Download aria-hidden size={14} />
+              Download .drawio
+            </PrimaryButton>
           )}
+
           <SecondaryButton disabled={!topology} onClick={downloadTopologyJson}>
-            <FileJson aria-hidden size={16} />
+            <FileJson aria-hidden size={14} />
             Download topology JSON
           </SecondaryButton>
+        </div>
+
+        <div className="mt-5 border-t border-[var(--line)] pt-4">
           <SecondaryButton onClick={startOver}>
-            <RotateCcw aria-hidden size={16} />
-            New upload
+            <RotateCcw aria-hidden size={14} />
+            Start new upload
           </SecondaryButton>
         </div>
-      </section>
+      </div>
     </AppShell>
   );
 }

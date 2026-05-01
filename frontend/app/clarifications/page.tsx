@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Save } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { LoadingPanel } from "@/components/LoadingPanel";
-import { PageHero } from "@/components/PageHero";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { getClarifications, submitClarifications } from "@/lib/api";
 import { loadProjectId, saveTopology } from "@/lib/project-state";
@@ -20,14 +19,11 @@ export default function ClarificationsPage() {
 
   useEffect(() => {
     const projectId = loadProjectId();
-    if (!projectId) {
-      router.push("/upload");
-      return;
-    }
+    if (!projectId) { router.push("/upload"); return; }
     getClarifications(projectId)
-      .then((response) => {
-        setQuestions(response.questions);
-        setAnswers(Object.fromEntries(response.questions.map((q) => [q.id, q.suggested_answer ?? ""])));
+      .then((res) => {
+        setQuestions(res.questions);
+        setAnswers(Object.fromEntries(res.questions.map((q) => [q.id, q.suggested_answer ?? ""])));
       })
       .catch((exc) => setError(exc instanceof Error ? exc.message : "Could not load questions"))
       .finally(() => setBusy(false));
@@ -52,59 +48,74 @@ export default function ClarificationsPage() {
     }
   }
 
+  const answered = Object.values(answers).filter(Boolean).length;
+
   return (
     <AppShell>
-      <PageHero
-        eyebrow="Clarification matrix"
-        title="Resolve ambiguity without stopping the pipeline"
-        description="Answer only the uncertain items. Unresolved warnings stay visible and the Draw.io output can still be generated."
-      />
-      <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex w-full flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-ink">Clarifications</h2>
-          <p className="text-sm text-muted">{questions.length} questions generated from incomplete or ambiguous data</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">Step 3</p>
+          <h2 className="text-xl font-semibold text-[var(--text)]">Clarifications</h2>
+          {!busy && (
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              {questions.length === 0
+                ? "No clarification needed."
+                : `${answered} of ${questions.length} answered`}
+            </p>
+          )}
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <SecondaryButton onClick={() => router.push("/preview")}>
-            <ArrowRight aria-hidden size={16} />
             Skip
+            <ArrowRight aria-hidden size={14} />
           </SecondaryButton>
-          <PrimaryButton disabled={busy} onClick={save}>
-            <Save aria-hidden size={16} />
-            Apply answers
+          <PrimaryButton disabled={busy || questions.length === 0} onClick={save}>
+            <Check aria-hidden size={14} />
+            Apply and continue
           </PrimaryButton>
         </div>
       </div>
-      {error && <p className="status-error mb-4 px-4 py-3 text-sm">{error}</p>}
+
+      {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
+
       {busy ? (
         <LoadingPanel message="Loading questions..." />
       ) : questions.length === 0 ? (
-        <p className="status-success px-4 py-3 text-sm">No clarification questions are needed.</p>
+        <p className="status-success w-full px-4 py-2.5 text-sm">
+          No clarification questions needed — proceed to preview.
+        </p>
       ) : (
-        <div className="w-full space-y-3">
-          {questions.map((question) => (
-            <label key={question.id} className="app-card block p-4 shadow-none">
-              <span className="text-sm font-medium text-ink">{question.message}</span>
+        <div className="w-full space-y-2">
+          {questions.map((question, index) => (
+            <div
+              key={question.id}
+              className="app-card anim-fade-in-up p-4"
+              style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
+            >
+              <label htmlFor={`q-${question.id}`} className="block text-sm font-medium text-[var(--text)]">
+                <span className="mr-2 font-mono text-xs text-[var(--muted)]">{index + 1}.</span>
+                {question.message}
+              </label>
               {question.options.length > 0 ? (
                 <select
-                  className="field-control mt-3 h-10 w-full px-3 text-sm"
+                  id={`q-${question.id}`}
+                  className="field-control mt-3 h-9 w-full px-3 text-sm"
                   value={answers[question.id] ?? ""}
-                  onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))}
+                  onChange={(e) => setAnswers((cur) => ({ ...cur, [question.id]: e.target.value }))}
                 >
-                  {question.options.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
+                  {question.options.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
               ) : (
                 <input
-                  className="field-control mt-3 h-10 w-full px-3 text-sm"
+                  id={`q-${question.id}`}
+                  className="field-control mt-3 h-9 w-full px-3 text-sm"
                   value={answers[question.id] ?? ""}
-                  onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))}
+                  onChange={(e) => setAnswers((cur) => ({ ...cur, [question.id]: e.target.value }))}
                 />
               )}
-            </label>
+            </div>
           ))}
         </div>
       )}

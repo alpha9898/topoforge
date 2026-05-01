@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Loader2, Workflow } from "lucide-react";
+import { ArrowRight, Download, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { IssueList } from "@/components/IssueList";
 import { LoadingPanel } from "@/components/LoadingPanel";
-import { PageHero } from "@/components/PageHero";
-import { PrimaryButton } from "@/components/PrimaryButton";
+import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { TopologyTables } from "@/components/TopologyTables";
 import { downloadDrawioFile, downloadUrl, generateDrawio } from "@/lib/api";
 import { loadDrawioUrl, loadProjectId, loadTopology, saveDrawioUrl } from "@/lib/project-state";
@@ -45,47 +44,62 @@ export default function PreviewPage() {
   if (!topology) {
     return (
       <AppShell>
-        <LoadingPanel loading={false} message="No topology is ready for preview." />
+        <LoadingPanel loading={false} message="No topology ready for preview. Complete the review step first." />
       </AppShell>
     );
   }
 
+  const issueCount = topology.issues.length;
+
   return (
     <AppShell>
-      <PageHero
-        eyebrow="Diagram preview"
-        title="Generate the editable HLD package"
-        description="TopoForge will produce Draw.io XML with devices, labels, connector anchors, reference tables, notes, and warnings."
-      />
-      <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex w-full flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
-            <Workflow aria-hidden size={20} />
-            Preview
-          </h2>
-          <p className="text-sm text-muted">The generated Draw.io file will use this normalized topology and warning summary.</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">Step 4</p>
+          <h2 className="text-xl font-semibold text-[var(--text)]">Generate diagram</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {drawioUrl
+              ? "Diagram generated. Download or regenerate below."
+              : "TopoForge will produce Draw.io XML with devices, cables, port labels, and reference tables."}
+            {issueCount > 0 && ` ${issueCount} issue${issueCount > 1 ? "s" : ""} will appear in the diagram notes.`}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {drawioUrl && (
             <a
-              className="focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-sm font-medium text-ink shadow-sm transition hover:bg-panel"
               href={downloadUrl(drawioUrl)}
               download
+              className="focus-ring inline-flex h-9 items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-medium text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-elevated)]"
             >
-              <Download aria-hidden size={16} />
+              <Download aria-hidden size={14} />
               Download .drawio
             </a>
           )}
           <PrimaryButton disabled={busy} onClick={generate}>
-            {busy ? <Loader2 aria-hidden className="animate-spin" size={16} /> : <Download aria-hidden size={16} />}
-            {drawioUrl ? "Regenerate" : "Generate .drawio"}
+            {busy ? (
+              <Loader2 aria-hidden size={14} className="animate-spin" />
+            ) : (
+              <Download aria-hidden size={14} />
+            )}
+            {busy ? "Generating..." : drawioUrl ? "Regenerate" : "Generate .drawio"}
           </PrimaryButton>
+          {drawioUrl && (
+            <SecondaryButton onClick={() => router.push("/export")}>
+              Export
+              <ArrowRight aria-hidden size={14} />
+            </SecondaryButton>
+          )}
         </div>
       </div>
-      {error && <p className="status-error mb-4 px-4 py-3 text-sm">{error}</p>}
-      <div className="mb-6 w-full">
-        <IssueList issues={topology.issues} />
-      </div>
+
+      {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
+
+      {issueCount > 0 && (
+        <div className="mb-5 w-full">
+          <IssueList issues={topology.issues} />
+        </div>
+      )}
+
       <TopologyTables topology={topology} />
     </AppShell>
   );

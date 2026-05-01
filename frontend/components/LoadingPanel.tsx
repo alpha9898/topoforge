@@ -1,9 +1,17 @@
 import { Loader2 } from "lucide-react";
 
-export function LoadingPanel({ loading = true, message = "Loading..." }: { loading?: boolean; message?: string }) {
+export function LoadingPanel({
+  loading = true,
+  message = "Loading...",
+}: {
+  loading?: boolean;
+  message?: string;
+}) {
   return (
-    <div className="app-card flex w-full items-center gap-3 px-4 py-3 text-sm text-muted">
-      {loading && <Loader2 aria-hidden className="animate-spin text-accent" size={18} />}
+    <div className="flex w-full items-center gap-3 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]">
+      {loading && (
+        <Loader2 aria-hidden size={15} className="shrink-0 animate-spin text-[var(--accent)]" />
+      )}
       <span>{message}</span>
     </div>
   );

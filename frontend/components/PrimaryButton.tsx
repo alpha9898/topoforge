@@ -6,7 +6,13 @@ export function PrimaryButton({ className = "", ...props }: ButtonHTMLAttributes
   return (
     <button
       {...props}
-      className={`focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--accent-strong)] bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${className}`}
+      className={[
+        "focus-ring inline-flex h-9 items-center justify-center gap-2 rounded-md",
+        "bg-[var(--accent)] px-4 text-sm font-medium text-white",
+        "transition-[colors,transform] hover:bg-[var(--accent-strong)] active:scale-[0.97]",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100",
+        className,
+      ].join(" ")}
     />
   );
 }
@@ -15,7 +21,13 @@ export function SecondaryButton({ className = "", ...props }: ButtonHTMLAttribut
   return (
     <button
       {...props}
-      className={`focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface/80 px-4 text-sm font-medium text-ink shadow-sm backdrop-blur transition hover:border-[var(--line-strong)] hover:bg-panel active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${className}`}
+      className={[
+        "focus-ring inline-flex h-9 items-center justify-center gap-2 rounded-md",
+        "border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-medium text-[var(--text)]",
+        "transition-[colors,transform] hover:border-[var(--line-strong)] hover:bg-[var(--surface-elevated)] active:scale-[0.97]",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100",
+        className,
+      ].join(" ")}
     />
   );
 }
