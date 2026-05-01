@@ -26,7 +26,8 @@ The generated diagram includes:
 - Real network-oriented shapes for servers, switches, firewalls, routers, cloud, VPN, admin endpoint, storage, and PDU/OOB style devices.
 - Device labels with names, hostnames, and management IPs when available.
 - Port-to-port cable labels.
-- Rounded Draw.io connectors with side anchors.
+- Rounded 3px Draw.io connectors with intelligent side anchors.
+- Device-aware port placement for WAN, LAN, management/OOB, HA, server data, and power links.
 - Deterministic top-to-bottom HLD layout.
 - Standard external path generation: Admin -> VPN -> Internet -> ISP -> Firewall.
 - OOB management device and management connections.
@@ -334,6 +335,14 @@ Manual corrections take priority over AI suggestions.
 
 The layout uses widened row and column spacing so devices are farther apart and cable paths are easier to inspect.
 
+Port Anchor Intelligence chooses connector exit and entry points based on device type, port role, cable role, peer type, and relative position. This keeps the generated HLD closer to how network diagrams are normally read:
+
+- Firewall WAN links leave from the top, LAN links from the bottom, management from the left, and HA/sync links from the right.
+- Switch uplinks, firewall, WAN, and core links use the top side; server, storage, and access links use the bottom side; management/OOB links use a side anchor.
+- Server and storage data NICs use the top side, iDRAC/IPMI/Mgmt links use the left side, and power links use the bottom side.
+- PDU and OOB fan-out links attach upward into the topology.
+- Multiple cables on the same side are spread across stable side slots to reduce overlapping connectors.
+
 ### Draw.io Generator
 
 `drawio_generator.py` creates mxGraph-compatible XML.
@@ -342,7 +351,7 @@ The output includes:
 
 - Device cells.
 - Real network-style shapes.
-- Rounded orthogonal cable connectors.
+- Rounded orthogonal cable connectors with `strokeWidth=3` for clearer visibility in Draw.io.
 - Port labels.
 - `exitX`, `exitY`, `entryX`, and `entryY` connector anchors.
 - Cable colors by role.

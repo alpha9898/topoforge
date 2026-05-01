@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 
 from openpyxl import Workbook
 
+from models import Cable, Device, Topology
 from services.drawio_generator import generate_drawio_xml
 from services.ai_parser import apply_ai_suggestions_to_parsed, build_ai_suggestions, enrich_topology_connections
 from services.excel_parser import normalize_header, parse_file
@@ -115,6 +116,7 @@ def test_drawio_source_device_cable_colors_are_deterministic():
     assert "YELLOW" in xml
     assert "RED" in xml
     assert "strokeColor=#FDD835" in cells["cable-001"].attrib["style"]
+    assert "strokeWidth=3" in cells["cable-001"].attrib["style"]
     assert "strokeColor=#FDD835" in cells["cable-002"].attrib["style"]
     assert "strokeColor=#E53935" in cells["cable-003"].attrib["style"]
     assert "RED Server-2" in xml
@@ -209,3 +211,77 @@ def test_standard_topology_completion_does_not_duplicate_on_second_pass():
     topology = complete_standard_topology(topology)
 
     assert len(topology.cables) == first_count
+
+
+def test_port_anchor_intelligence_assigns_role_based_sides():
+    topology = layout_topology(
+        Topology(
+            devices=[
+                Device(id="isp-1", name="ISP-1", type="isp_router"),
+                Device(id="fw1", name="Firewall-1", type="firewall"),
+                Device(id="fw2", name="Firewall-2", type="firewall"),
+                Device(id="sw1", name="SW1", type="switch"),
+                Device(id="server1", name="Server-1", type="server"),
+                Device(id="oob-mgmt", name="OOB-MGMT", type="switch"),
+                Device(id="pdu-1", name="PDU-1", type="pdu"),
+            ],
+            cables=[
+                Cable(id="wan", sourceDeviceId="fw1", sourcePort="WAN1", targetDeviceId="isp-1", targetPort="LAN", cableType="wan", connectionRole="wan"),
+                Cable(id="lan", sourceDeviceId="fw1", sourcePort="eth1", targetDeviceId="sw1", targetPort="Gi1/0/49", cableType="ethernet", connectionRole="lan"),
+                Cable(id="ha", sourceDeviceId="fw1", sourcePort="HA1", targetDeviceId="fw2", targetPort="HA1", cableType="ethernet", connectionRole="ha"),
+                Cable(id="server", sourceDeviceId="sw1", sourcePort="Gi1/0/1", targetDeviceId="server1", targetPort="eth0", cableType="ethernet", connectionRole="lan"),
+                Cable(id="mgmt", sourceDeviceId="server1", sourcePort="iDRAC", targetDeviceId="oob-mgmt", targetPort="1", cableType="management", connectionRole="management"),
+                Cable(id="power", sourceDeviceId="server1", sourcePort="PSU1", targetDeviceId="pdu-1", targetPort="A1", cableType="power", connectionRole="power"),
+            ],
+        )
+    )
+    cables = {cable.id: cable for cable in topology.cables}
+
+    assert (cables["wan"].exitX, cables["wan"].exitY) == (0.5, 0.0)
+    assert cables["wan"].entryY == 1.0
+    assert (cables["lan"].exitX, cables["lan"].exitY) == (0.5, 1.0)
+    assert cables["lan"].entryY == 0.0
+    assert cables["ha"].exitX == 1.0
+    assert cables["ha"].entryX == 1.0
+    assert cables["server"].exitY == 1.0
+    assert (cables["server"].entryX, cables["server"].entryY) == (0.5, 0.0)
+    assert cables["mgmt"].exitX == 0.0
+    assert cables["mgmt"].entryY == 0.0
+    assert (cables["power"].exitX, cables["power"].exitY) == (0.5, 1.0)
+    assert (cables["power"].entryX, cables["power"].entryY) == (0.5, 0.0)
+
+
+def test_port_anchor_intelligence_spreads_same_side_switch_ports():
+    topology = layout_topology(
+        Topology(
+            devices=[
+                Device(id="sw1", name="SW1", type="switch"),
+                Device(id="server1", name="Server-1", type="server"),
+                Device(id="server2", name="Server-2", type="server"),
+                Device(id="server3", name="Server-3", type="server"),
+            ],
+            cables=[
+                Cable(id="cable-001", sourceDeviceId="sw1", sourcePort="Gi1/0/1", targetDeviceId="server1", targetPort="eth0", cableType="ethernet", connectionRole="lan"),
+                Cable(id="cable-002", sourceDeviceId="sw1", sourcePort="Gi1/0/2", targetDeviceId="server2", targetPort="eth0", cableType="ethernet", connectionRole="lan"),
+                Cable(id="cable-003", sourceDeviceId="sw1", sourcePort="Gi1/0/3", targetDeviceId="server3", targetPort="eth0", cableType="ethernet", connectionRole="lan"),
+            ],
+        )
+    )
+
+    assert [(cable.exitX, cable.exitY) for cable in topology.cables] == [(0.25, 1.0), (0.5, 1.0), (0.75, 1.0)]
+
+
+def test_port_anchor_intelligence_is_written_to_drawio_xml():
+    topology = layout_topology(
+        Topology(
+            devices=[Device(id="fw1", name="Firewall-1", type="firewall"), Device(id="sw1", name="SW1", type="switch")],
+            cables=[
+                Cable(id="cable-001", sourceDeviceId="fw1", sourcePort="eth1", targetDeviceId="sw1", targetPort="Gi1/0/49", cableType="ethernet", connectionRole="lan")
+            ],
+        )
+    )
+    xml = generate_drawio_xml(topology)
+    root = ET.fromstring(xml)
+    cable_cell = next(cell for cell in root.iter("mxCell") if cell.attrib.get("id") == "cable-001")
+
+    assert "exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;" in cable_cell.attrib["style"]

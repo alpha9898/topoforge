@@ -149,7 +149,7 @@ def _add_cable(root: ET.Element, cable: Cable, devices: dict[str, Device], offse
     style = (
         "edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=10;html=1;"
         "labelBackgroundColor=#ffffff;fontSize=10;spacing=4;"
-        f"strokeColor={color};dashed={dashed};endArrow=none;startArrow=none;"
+        f"strokeColor={color};strokeWidth=3;dashed={dashed};endArrow=none;startArrow=none;"
         f"exitX={cable.exitX};exitY={cable.exitY};entryX={cable.entryX};entryY={cable.entryY};"
     )
     cell = ET.SubElement(
