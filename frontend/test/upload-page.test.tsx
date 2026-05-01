@@ -31,6 +31,6 @@ describe("UploadPage", () => {
 
     fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
 
-    expect(screen.getByText("Use an Excel or CSV file.")).toBeInTheDocument();
+    expect(screen.getByText("Accepted formats: .xlsx, .xls, .xlsm, .csv")).toBeInTheDocument();
   });
 });

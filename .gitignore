@@ -11,6 +11,13 @@ frontend/.next/
 frontend/node_modules/
 frontend/frontend-server*.log
 frontend/*.tsbuildinfo
+.agents/
+.claude/
+.trae/
+.windsurf/
+.graphify*
+graphify-out/
+bash.exe.stackdump
 .env
 .env.*
 !.env.example

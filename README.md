@@ -704,7 +704,47 @@ npm.cmd run build
 Pop-Location
 ```
 
-GitHub Actions runs backend tests, frontend typecheck, lint, tests, and production build on push and pull request.
+GitHub Actions runs backend tests, frontend lint, tests, typecheck, and production build on pull request and on pushes to `main`.
+
+## CI/CD
+
+The repository uses GitHub Actions for validation and production deployment.
+
+Pull requests run validation only:
+
+- Backend: install Python dependencies and run `pytest`.
+- Frontend: `npm ci`, lint, Vitest, TypeScript typecheck, and Next.js production build.
+
+Pushes to `main` and manual `workflow_dispatch` runs execute the same validation first. If validation passes, the workflow:
+
+- Deploys the frontend to Vercel from the `frontend/` project root.
+- Triggers the backend deployment on Render with the pushed commit SHA.
+
+Required GitHub repository secrets:
+
+```text
+VERCEL_TOKEN
+VERCEL_ORG_ID
+VERCEL_PROJECT_ID
+NEXT_PUBLIC_API_BASE
+RENDER_DEPLOY_HOOK_URL
+```
+
+Vercel setup:
+
+- Project root: `frontend`
+- Framework preset: Next.js
+- Production environment variable: `NEXT_PUBLIC_API_BASE` should point to the Render backend URL.
+
+Render setup:
+
+- Service type: Web Service
+- Root directory: `backend`
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Runtime environment variables: configure `GEMINI_API_KEY`, `PROJECT_TTL_HOURS`, and `PROJECT_CLEANUP_INTERVAL_MINUTES` in Render.
+
+Deployment jobs are skipped for pull requests. Missing deployment secrets affect only the deploy jobs on `main`, not pull request validation.
 
 ## Security Notes
 
