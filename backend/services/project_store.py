@@ -9,7 +9,8 @@ from uuid import uuid4
 from models import ClarificationQuestion, Topology
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-STORAGE_DIR = BASE_DIR / "storage"
+DEFAULT_STORAGE_DIR = Path("/tmp/topoforge") if os.getenv("VERCEL") else BASE_DIR / "storage"
+STORAGE_DIR = Path(os.getenv("TOPOFORGE_STORAGE_DIR", str(DEFAULT_STORAGE_DIR)))
 UPLOAD_DIR = STORAGE_DIR / "uploads"
 OUTPUT_DIR = STORAGE_DIR / "outputs"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

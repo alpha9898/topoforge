@@ -1,5 +1,6 @@
 backend/.vendor/
 backend/.venv/
+backend/.vercel/
 backend/.pytest_cache/
 backend/pytest-cache-files-*/
 backend/tests/_tmp*
@@ -8,6 +9,7 @@ backend/storage/uploads/*
 backend/storage/outputs/*
 !backend/storage/outputs/.gitkeep
 frontend/.next/
+frontend/.vercel/
 frontend/node_modules/
 frontend/frontend-server*.log
 frontend/*.tsbuildinfo
