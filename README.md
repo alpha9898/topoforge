@@ -13,9 +13,11 @@
 
 TopoForge is a full-stack web app that converts Low-Level Design (LLD) Excel or CSV data into a clean, editable High-Level Design (HLD) network diagram in `.drawio` format.
 
-The application is designed for network, DevOps, infrastructure, cloud, and data center engineers who need to turn structured LLD data into professional diagrams without manually redrawing every device, port, and cable.
+Designed for network, DevOps, infrastructure, cloud, and data center engineers who need to turn structured LLD data into professional diagrams without manually redrawing every device, port, and cable.
 
-Open `http://localhost:3001` to reach the landing page. Click **Get Started** or **Upload your spreadsheet** to enter the five-step wizard.
+**Live:** `https://frontend-flame-five-srykz60go6.vercel.app`
+
+---
 
 ## What It Does
 
@@ -23,31 +25,89 @@ TopoForge takes an uploaded workbook, parses messy infrastructure data, normaliz
 
 The generated diagram includes:
 
-- Real network-oriented shapes for servers, switches, firewalls, routers, cloud, VPN, admin endpoint, storage, and PDU/OOB style devices.
+- Real network-oriented shapes for servers, switches, firewalls, routers, cloud, VPN, admin endpoint, storage, and PDU/OOB devices.
 - Device labels with names, hostnames, and management IPs when available.
-- Port-to-port cable labels.
+- Port-to-port cable labels with color-coded connectors by role.
 - Rounded 3px Draw.io connectors with intelligent side anchors.
-- Device-aware port placement for WAN, LAN, management/OOB, HA, server data, and power links.
 - Deterministic top-to-bottom HLD layout with density-aware collision avoidance.
-- Standard external path generation: Admin -> VPN -> Internet -> ISP -> Firewall.
+- Standard external path: Admin → VPN → Internet → ISP → Firewall.
 - OOB management device and management connections.
-- Expanded cable reference tables with source, destination, ports, role, color, VLAN, and notes.
-- A visual legend for cable colors and dashed/solid meanings.
+- Expanded cable reference tables (source, destination, ports, role, color, VLAN, notes).
+- Visual legend for cable colors and dashed/solid meanings.
 - Switch/OOB port summary tables.
 - Notes and issue summaries inside the generated diagram.
 
-## MVP Status
+---
 
-This project is an MVP. It intentionally uses:
+## Quick Start (Local)
 
-- In-memory project state.
-- Local temporary upload/output folders.
-- No authentication.
-- No database.
-- No cloud storage.
-- Best-effort generation even when warnings exist.
+### Requirements
 
-The current goal is deterministic, technically inspectable `.drawio` output rather than a full Draw.io editor clone.
+- Python 3.11+
+- Node.js 18+
+- `make` (Linux/macOS) or run commands manually (Windows)
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/alpha9898/topoforge.git
+cd topoforge
+cp .env.example .env
+# Optional: add GEMINI_API_KEY to .env to enable AI-assisted parsing
+```
+
+### 2. Install all dependencies
+
+```bash
+make install
+```
+
+### 3. Run both servers
+
+```bash
+# Terminal 1 — backend on http://localhost:8001
+make dev-backend
+
+# Terminal 2 — frontend on http://localhost:3001
+make dev-frontend
+```
+
+Open `http://localhost:3001` in your browser.
+
+### Make targets
+
+```bash
+make install        # Install backend (pip) + frontend (npm) deps
+make dev-backend    # uvicorn --reload on :8001
+make dev-frontend   # next dev on :3001
+make test           # pytest + vitest
+make typecheck      # tsc --noEmit
+make build          # next build (production)
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Exposes frontend on `:3001` and backend on `:8001`.
+
+---
+
+## User Workflow
+
+1. Open `http://localhost:3001` — landing page with animated SVG topology diagram.
+2. Click **Get Started** → Upload step.
+3. Drag and drop or click to select an `.xlsx`, `.xls`, `.xlsm`, or `.csv` LLD file.
+4. Optionally enable the AI parsing helper (requires `GEMINI_API_KEY`).
+5. Review detected devices, connections, issues, and AI suggestions.
+6. Apply device corrections: rename, retype, remove duplicates, or add missing devices.
+7. Answer clarification questions for unknown types, missing ports, or cable type conflicts.
+8. Generate the Draw.io file — browser downloads it automatically.
+9. Open in [diagrams.net](https://app.diagrams.net), Draw.io Desktop, or the VS Code Draw.io extension.
+
+---
 
 ## Architecture
 
@@ -58,8 +118,8 @@ Frontend - Next.js / React / TypeScript / Tailwind
 Backend - FastAPI / Pydantic
         |
         +-- Upload Service
-        +-- Excel Parser
-        +-- AI Parser Helper
+        +-- Excel / CSV Parser
+        +-- AI Parser Helper (Gemini, optional)
         +-- Topology Builder
         +-- Topology Completion
         +-- Validation Engine
@@ -71,6 +131,8 @@ Backend - FastAPI / Pydantic
         v
 Editable .drawio file
 ```
+
+---
 
 ## Project Structure
 
@@ -97,15 +159,13 @@ Editable .drawio file
 │   │   ├── topology_completion.py
 │   │   ├── topology_corrections.py
 │   │   └── validator.py
-│   ├── storage/
-│   │   ├── outputs/
-│   │   └── uploads/
 │   └── tests/
-│       └── test_services.py
+│       ├── test_services.py
+│       └── test_api_endpoints.py   ← corrections, clarify, generate, download
 │
 ├── frontend/
 │   ├── app/
-│   │   ├── page.tsx              ← landing page
+│   │   ├── page.tsx                ← landing page
 │   │   ├── clarifications/
 │   │   ├── export/
 │   │   ├── preview/
@@ -113,8 +173,9 @@ Editable .drawio file
 │   │   └── upload/
 │   ├── components/
 │   │   ├── AiSuggestionsPanel.tsx
-│   │   ├── AppShell.tsx
+│   │   ├── AppShell.tsx            ← session expiry banner
 │   │   ├── DeviceCorrectionPanel.tsx
+│   │   ├── ErrorBoundary.tsx       ← crash recovery UI
 │   │   ├── IssueList.tsx
 │   │   ├── LoadingPanel.tsx
 │   │   ├── PageHero.tsx
@@ -122,258 +183,147 @@ Editable .drawio file
 │   │   ├── StandardPathPanel.tsx
 │   │   ├── ThemeProvider.tsx
 │   │   ├── ThemeToggle.tsx
-│   │   └── TopologyTables.tsx
-│   └── lib/
-│       ├── api.ts
-│       ├── project-state.ts
-│       └── types.ts
+│   │   ├── Toast.tsx               ← success notifications
+│   │   └── TopologyTables.tsx      ← searchable device/cable tables
+│   ├── lib/
+│   │   ├── api.ts
+│   │   ├── project-state.ts
+│   │   └── types.ts
+│   └── test/
+│       └── upload-page.test.tsx
 │
+├── vercel.json                     ← monorepo build config for Vercel
 └── README.md
 ```
 
-## User Workflow
-
-1. Open `http://localhost:3001` — the landing page introduces the tool and links to the wizard.
-2. Click **Get Started** to reach the upload step.
-3. Upload an `.xlsx`, `.xls`, or `.csv` LLD file.
-4. Optionally enable the AI parsing helper.
-5. Review detected devices, connections, issues, and AI suggestions.
-6. Apply device corrections, remove duplicates, rename standard path devices, or add missing devices.
-7. Answer clarification questions for unknown types, missing ports, cable types, and conflicts.
-8. Generate the Draw.io file.
-9. The browser automatically downloads the `.drawio` output.
-10. Open the file in diagrams.net, Draw.io Desktop, or a Draw.io-compatible VS Code extension.
+---
 
 ## Frontend Features
 
-The frontend consists of a marketing landing page at `/` followed by a five-step wizard. The landing page uses staggered scroll-triggered animations, an animated SVG network topology diagram, and animated count-up statistics — all built with the same Tailwind design tokens as the wizard so the transition feels seamless.
+### Wizard pages
 
-The wizard uses centered panels, translucent surfaces, responsive step navigation with directional slide transitions, and a persistent light/dark theme toggle.
+| Route | Purpose |
+|---|---|
+| `/` | Landing page — animated SVG topology, how-it-works, feature cards, count-up stats |
+| `/upload` | File picker with drag-and-drop, upload validation, optional AI settings |
+| `/review` | Device table, connection table, issues, AI suggestions, correction tools |
+| `/clarifications` | Editable questions for ambiguous parsed data |
+| `/preview` | Generate diagram and trigger automatic download |
+| `/export` | Download links and export state |
 
-Theme behavior:
+### Key components
 
-- Theme preference is stored in `localStorage` as `topoforge-theme`.
-- `next/script` applies the saved theme before hydration to reduce visible theme flash.
-- `ThemeProvider` keeps the first render deterministic and then syncs the stored theme after mount.
-- `ThemeToggle` is available in the top-right app shell on every wizard page.
+- **`ErrorBoundary`** — wraps the entire app; catches render exceptions and shows a recovery UI instead of a blank screen.
+- **`Toast`** — lightweight auto-dismiss notification shown after corrections are saved.
+- **`AppShell`** — wizard chrome with step indicator, navigation, theme toggle, and a session expiry warning banner (appears at 5.5 h, shows expired state at 6 h).
+- **`DeviceCorrectionPanel`** — rename, retype, remove, or add devices. Shows an unsaved-changes browser warning if you navigate away without clicking Apply.
+- **`TopologyTables`** — searchable/filterable device and connection tables; supports 100+ device topologies without scrolling blind.
+- **`AiSuggestionsPanel`** — suggested alias merges, type changes, ignored rows, and duplicate warnings.
+- **`StandardPathPanel`** — review and edit Admin, VPN, Internet, ISP-1, ISP-2, and OOB devices.
 
-Pages:
+### Theme
 
-- `/` - landing page with animated SVG topology diagram, how-it-works steps, feature cards, and count-up stats.
-- `/upload` - file picker, upload validation, optional AI helper settings.
-- `/review` - device table, connection table, issues, AI suggestions, manual correction tools.
-- `/clarifications` - editable question list for ambiguous parsed data.
-- `/preview` - generate diagram and trigger automatic download.
-- `/export` - download links and export state.
+- Stored in `localStorage` as `topoforge-theme`.
+- Applied before hydration via `next/script strategy="beforeInteractive"` to eliminate flash.
+- Toggle available on every wizard page (top-right).
 
-Important UI components:
+### Drag-and-drop upload
 
-- `AiSuggestionsPanel` shows suggested alias merges, type changes, ignored rows, and duplicate warnings.
-- `AppShell` provides the centered command-center layout, wizard progress, and theme toggle.
-- `DeviceCorrectionPanel` lets users rename, retype, remove, or add devices.
-- `LoadingPanel` provides consistent loading and empty states.
-- `PageHero` provides the centered futuristic page header used across the wizard.
-- `StandardPathPanel` lets users review and edit Admin, VPN, Internet, ISP-1, ISP-2, and OOB devices.
-- `ThemeProvider` and `ThemeToggle` manage the persistent light/dark experience.
-- `TopologyTables` displays the normalized devices and cables before generation.
+The upload zone accepts files dropped directly onto it. Unsupported formats show a validation error immediately; no round-trip to the server.
+
+---
 
 ## Backend Features
 
 ### Upload
 
-The upload router accepts infrastructure files and stores them in local temporary storage.
+Accepts `.xlsx`, `.xls`, `.xlsm`, and `.csv`. Enforces a 20 MB maximum. Stores files in a local temporary folder keyed by a random project ID.
 
-Supported MVP input types:
+### Excel and CSV Parsing
 
-- `.xlsx`
-- `.xls`
-- `.csv`
+`excel_parser.py` uses flexible header aliases — no rigid template required.
 
-The upload endpoint enforces a 20 MB maximum file size.
-
-### Excel And CSV Parsing
-
-`excel_parser.py` reads workbook sheets and uses flexible header aliases instead of requiring one exact template.
-
-Supported semantic fields include:
-
-- Device name
-- Hostname
-- Device type
-- Port/interface
-- Connected device
-- Connected port
-- IP / management IP
-- VLAN / segment
-- Zone
-- Cable / media / link type
-
-The parser is intentionally permissive. It extracts candidate rows, then later services decide what is valid, suspicious, or ambiguous.
+Supported semantic fields: device name, hostname, device type, port/interface, connected device, connected port, IP/management IP, VLAN/segment, zone, cable/media/link type.
 
 ### Topology Builder
 
-`topology_builder.py` converts raw parsed rows into normalized objects:
+Converts raw parsed rows into `Device`, `Port`, `Cable`, and `Topology` Pydantic objects.
 
-- `Device`
-- `Port`
-- `Cable`
-- `Topology`
+Port normalization examples: `Ethernet 1` → `eth1`, `G1/0/1` → `Gi1/0/1`, `mgmt` → `Mgmt`.
 
-It normalizes ports such as:
-
-- `Ethernet 1` -> `eth1`
-- `G1/0/1` -> `Gi1/0/1`
-- `mgmt` -> `Mgmt`
-
-It infers common device types from names and behavior:
-
-- Firewall
-- Switch
-- Server
-- Storage
-- PDU
-- VPN gateway
-- ISP router
-- Cloud / Internet
-- Admin endpoint
-- Unknown
+Inferred device types: firewall, switch, server, storage, PDU, VPN gateway, ISP router, cloud/internet, admin endpoint, unknown.
 
 ### AI Parsing Helper
 
-`ai_parser.py` optionally assists parsing. It does not replace the deterministic parser.
+`ai_parser.py` optionally enriches parsed data using Gemini. It is off by default.
 
-The helper can suggest:
+The helper can suggest: alias maps, device type corrections, false-connection warnings, suspicious duplicates, and connection role enrichment.
 
-- Alias maps such as `SW1 -> gui1swtch01`.
-- Alias maps such as `Firewall-1 -> gui1fwall01`.
-- Device type suggestions.
-- Rows that look like false connections.
-- Suspicious duplicate devices.
-- Connection enrichment such as roles, clearer labels, and management/OOB interpretation.
+Privacy: the full workbook bytes are never sent to Gemini. IP addresses are only included if the user explicitly enables "Include IPs in AI". Falls back to local rule-based suggestions if `GEMINI_API_KEY` is absent or Gemini is unavailable.
 
-Privacy behavior:
-
-- AI helper is off by default.
-- The full workbook bytes are not sent to Gemini.
-- IP addresses are only included if the user explicitly enables "Include IPs in AI".
-- If `GEMINI_API_KEY` is missing or Gemini fails, TopoForge falls back to local rule-based suggestions.
-
-Environment variable:
-
-```powershell
-$env:GEMINI_API_KEY="your-gemini-api-key"
-```
+The API key is sent as the `x-goog-api-key` request header — never as a URL query parameter.
 
 ### Topology Completion
 
 `topology_completion.py` adds common enterprise edge structure when missing:
 
 ```text
-Admin -> VPN Gateway -> Internet -> ISP-1 / ISP-2 -> Firewalls
+Admin → VPN Gateway → Internet → ISP-1 / ISP-2 → Firewalls
 ```
 
-It also adds an OOB management node and creates management links to infrastructure devices where appropriate.
+Also adds an OOB management node with management links to infrastructure devices.
 
 ### Validation
 
-`validator.py` returns structured issues.
+`validator.py` returns structured `Issue` objects.
 
-Issue severities:
+Severities: `error` (unusable rows/data) and `warning` (ambiguous, missing, duplicate, or suspicious data).
 
-- `error` - rows or data that are unusable.
-- `warning` - ambiguous, missing, duplicate-looking, or suspicious topology data.
+Examples: missing source port, missing target port, unknown device type, unknown cable type, possible port conflict, suspicious topology pattern.
 
-Examples:
-
-- Missing source port.
-- Missing target port.
-- Unknown device type.
-- Unknown cable type.
-- Possible port conflict.
-- Suspicious topology pattern.
-
-The MVP uses best-effort generation. Warnings are visible to the user but do not block Draw.io generation.
+Best-effort generation: warnings are visible to the user but do not block Draw.io generation.
 
 ### Clarifications
 
-`clarification_engine.py` turns unresolved issues into user-facing questions.
-
-Example clarification types:
-
-- Unknown device type.
-- Missing source port.
-- Missing destination port.
-- Unknown cable type.
-- Port conflict.
+`clarification_engine.py` turns unresolved issues into user-facing questions: unknown device type, missing source/destination port, unknown cable type, port conflict.
 
 ### Corrections
 
-`topology_corrections.py` applies manual user edits after parsing.
+`topology_corrections.py` applies manual user edits: rename device, change device type, change management IP, change zone, remove device, add missing device. Manual corrections take priority over AI suggestions.
 
-Supported correction actions:
-
-- Rename device.
-- Change device type.
-- Change management IP.
-- Change zone.
-- Remove device.
-- Add missing device.
-
-Manual corrections take priority over AI suggestions.
-
-### Layout
+### Layout Engine
 
 `layout_engine.py` places devices in deterministic HLD rows:
 
-1. External: Admin, VPN, Internet.
-2. ISP routers.
-3. Firewalls.
-4. Switches.
-5. Servers and storage.
-6. Power / PDU.
-7. Unknown / other.
+1. External: Admin, VPN, Internet
+2. ISP routers
+3. Firewalls
+4. Switches
+5. Servers and storage
+6. Power / PDU
+7. Unknown / other
 
-The layout uses density-aware spacing so devices are farther apart when cable pressure is high. TopoForge calculates device degree, inter-row link density, and same-row fan-out before assigning coordinates.
+Density-aware spacing: column spacing grows for dense rows; row spacing grows when many links cross between adjacent layers; high-degree devices are placed closer to row center; redundant pairs (`Firewall-1`/`Firewall-2`, `SW1`/`SW2`) stay adjacent.
 
-Collision avoidance behavior:
+Port anchor intelligence assigns connector exit/entry points by device type, port role, cable role, peer type, and relative position — keeping WAN links at the top, LAN at the bottom, management on the side, and HA on the opposite side.
 
-- Column spacing grows for dense rows with many device connections.
-- Row spacing grows when many links cross between adjacent HLD layers.
-- High-degree devices are placed closer to the center of their row.
-- Redundant pairs such as `Firewall-1` / `Firewall-2` and `SW1` / `SW2` stay adjacent where possible.
-- Parallel cables between the same devices and busy rows receive wider waypoint offsets to reduce overlap.
-
-Port Anchor Intelligence chooses connector exit and entry points based on device type, port role, cable role, peer type, and relative position. This keeps the generated HLD closer to how network diagrams are normally read:
-
-- Firewall WAN links leave from the top, LAN links from the bottom, management from the left, and HA/sync links from the right.
-- Switch uplinks, firewall, WAN, and core links use the top side; server, storage, and access links use the bottom side; management/OOB links use a side anchor.
-- Server and storage data NICs use the top side, iDRAC/IPMI/Mgmt links use the left side, and power links use the bottom side.
-- PDU and OOB fan-out links attach upward into the topology.
-- Multiple cables on the same side are spread across stable side slots to reduce overlapping connectors.
+Dangling cable references (cables pointing to devices removed via corrections) are silently skipped rather than crashing the generate step.
 
 ### Draw.io Generator
 
-`drawio_generator.py` creates mxGraph-compatible XML.
+`drawio_generator.py` produces mxGraph-compatible XML with:
 
-The output includes:
-
-- Device cells.
-- Real network-style shapes.
-- Rounded orthogonal cable connectors with `strokeWidth=3` for clearer visibility in Draw.io.
-- Port labels.
-- `exitX`, `exitY`, `entryX`, and `entryY` connector anchors.
-- Cable colors by role.
-- Expanded cable reference table with source device, source port, destination device, destination port, role, source-device color, VLAN, and notes.
+- Real network-style shapes per device type.
+- Rounded orthogonal connectors (`strokeWidth=3`) with `exitX/Y` and `entryX/Y` anchors.
 - Cable color legend.
+- Expanded cable reference table (source, destination, ports, role, color, VLAN, notes).
 - Switch/OOB port summary.
 - Notes and warning summary.
 
-VLAN handling is best-effort for the MVP. The generator first uses the cable VLAN field, then falls back to source or destination port VLAN, then to VLAN-like connection role values such as `603` or `VLAN 603`. If no VLAN can be inferred, the table shows `-`.
-
-Cable colors:
+Cable color conventions:
 
 | Role | Color | Style |
-| --- | --- | --- |
+|---|---|---|
 | WAN / Internet | Gray | Solid |
 | LAN / Internal | Blue | Solid |
 | Management / OOB | Green | Dashed |
@@ -381,6 +331,8 @@ Cable colors:
 | Storage | Orange | Solid |
 | Power / PDU | Red | Dashed |
 | Unknown | Black | Solid |
+
+---
 
 ## API Reference
 
@@ -390,12 +342,8 @@ Cable colors:
 GET /api/health
 ```
 
-Response:
-
 ```json
-{
-  "status": "ok"
-}
+{ "status": "ok" }
 ```
 
 ### Upload File
@@ -404,13 +352,8 @@ Response:
 POST /api/upload
 ```
 
-Response:
-
 ```json
-{
-  "project_id": "abc123",
-  "status": "uploaded"
-}
+{ "project_id": "abc123", "status": "uploaded" }
 ```
 
 ### Parse Project
@@ -419,24 +362,10 @@ Response:
 POST /api/projects/{project_id}/parse
 ```
 
-Optional request body:
+Optional body:
 
 ```json
-{
-  "use_ai_helper": true,
-  "include_ips_in_ai": false
-}
-```
-
-Response shape:
-
-```json
-{
-  "devices": [],
-  "cables": [],
-  "issues": [],
-  "aiSuggestions": {}
-}
+{ "use_ai_helper": true, "include_ips_in_ai": false }
 ```
 
 ### Apply Corrections
@@ -445,13 +374,11 @@ Response shape:
 POST /api/projects/{project_id}/corrections
 ```
 
-Request:
-
 ```json
 {
-  "device_updates": [],
-  "removed_device_ids": [],
-  "added_devices": []
+  "device_updates": [{ "id": "dev-1", "name": "fw-01", "type": "firewall" }],
+  "removed_device_ids": ["dev-2"],
+  "added_devices": [{ "name": "new-sw", "type": "switch" }]
 }
 ```
 
@@ -461,31 +388,14 @@ Request:
 GET /api/projects/{project_id}/clarifications
 ```
 
-Response:
-
-```json
-{
-  "questions": []
-}
-```
-
 ### Submit Clarifications
 
 ```http
 POST /api/projects/{project_id}/clarifications
 ```
 
-Request:
-
 ```json
-{
-  "answers": [
-    {
-      "question_id": "q1",
-      "answer": "eth1"
-    }
-  ]
-}
+{ "answers": [{ "question_id": "q1", "answer": "eth1" }] }
 ```
 
 ### Generate Draw.io
@@ -494,13 +404,8 @@ Request:
 POST /api/projects/{project_id}/generate
 ```
 
-Response:
-
 ```json
-{
-  "status": "generated",
-  "drawio_url": "/api/projects/{project_id}/download"
-}
+{ "status": "generated", "drawio_url": "/api/projects/{project_id}/download" }
 ```
 
 ### Download Draw.io
@@ -511,9 +416,11 @@ GET /api/projects/{project_id}/download
 
 Returns an attachment response containing the generated `.drawio` file.
 
+---
+
 ## Data Model
 
-Core Pydantic models live in `backend/models/topology.py`.
+Core Pydantic v2 models live in `backend/models/topology.py`.
 
 ### Device
 
@@ -557,120 +464,7 @@ Core Pydantic models live in `backend/models/topology.py`.
 }
 ```
 
-## Local Development
-
-### Requirements
-
-- Python 3.13 or compatible Python 3.x runtime.
-- Node.js compatible with the installed Next.js version.
-- npm.
-
-### Install Backend Dependencies
-
-PowerShell:
-
-```powershell
-python -m pip install -r backend\requirements.txt
-```
-
-Alternative workspace-local install:
-
-```powershell
-python -m pip install -r backend\requirements.txt --target backend\.vendor
-```
-
-Bash:
-
-```bash
-python -m pip install -r backend/requirements.txt
-```
-
-### Install Frontend Dependencies
-
-PowerShell:
-
-```powershell
-Push-Location frontend
-npm.cmd install
-Pop-Location
-```
-
-Bash:
-
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-### Run Backend
-
-PowerShell:
-
-```powershell
-Push-Location backend
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
-Pop-Location
-```
-
-Bash:
-
-```bash
-cd backend
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
-```
-
-Backend URL:
-
-```text
-http://localhost:8001
-```
-
-### Run Frontend
-
-PowerShell:
-
-```powershell
-Push-Location frontend
-$env:NEXT_PUBLIC_API_BASE="http://localhost:8001"
-npm.cmd run dev -- -p 3001
-Pop-Location
-```
-
-Bash:
-
-```bash
-cd frontend
-NEXT_PUBLIC_API_BASE=http://localhost:8001 npm run dev -- -p 3001
-```
-
-Frontend URL:
-
-```text
-http://localhost:3001
-```
-
-### Docker Compose
-
-```bash
-docker compose up --build
-```
-
-Docker exposes:
-
-- Frontend: `http://localhost:3001`
-- Backend: `http://localhost:8001`
-
-### Make Targets
-
-```bash
-make install
-make dev-backend
-make dev-frontend
-make test
-make typecheck
-make build
-```
+---
 
 ## Environment Variables
 
@@ -680,170 +474,155 @@ make build
 NEXT_PUBLIC_API_BASE=http://localhost:8001
 ```
 
+Set automatically to the production backend URL via `vercel.json` on Vercel deployments.
+
 ### Backend
 
 ```text
-GEMINI_API_KEY=optional Gemini API key for AI-assisted parsing
-PROJECT_TTL_HOURS=6
+GEMINI_API_KEY=             # Optional — enables AI-assisted parsing
+PROJECT_TTL_HOURS=6         # How long projects live in memory
 PROJECT_CLEANUP_INTERVAL_MINUTES=30
+CORS_ALLOW_ORIGINS=         # Comma-separated extra allowed origins (production)
 ```
 
 Copy `.env.example` when bootstrapping local development.
 
+---
+
 ## Testing
 
-Run backend tests:
+```bash
+# All tests
+make test
 
-```powershell
-python -m pytest backend\tests -c backend\pytest.ini
+# Backend only
+cd backend && pytest
+
+# Frontend only
+cd frontend && npm test
+
+# Frontend type check + lint
+cd frontend && npm run typecheck && npm run lint
 ```
 
-Run frontend type checks:
+Test coverage:
 
-```powershell
-Push-Location frontend
-npm.cmd run typecheck
-Pop-Location
-```
+- **`backend/tests/test_services.py`** — unit tests for parser, topology builder, validator, layout engine, and Draw.io generator.
+- **`backend/tests/test_api_endpoints.py`** — 16 integration tests via FastAPI `TestClient` covering corrections, clarifications, generate, download, and dangling-cable crash regression.
+- **`frontend/test/upload-page.test.tsx`** — file validation and upload zone rendering.
 
-Run frontend tests and lint:
+GitHub Actions runs the full suite on every push and pull request.
 
-```powershell
-Push-Location frontend
-npm.cmd run test
-npm.cmd run lint
-Pop-Location
-```
-
-Optional frontend build:
-
-```powershell
-Push-Location frontend
-npm.cmd run build
-Pop-Location
-```
-
-GitHub Actions runs backend tests, frontend lint, tests, typecheck, and production build on pull request and on pushes to `main`.
+---
 
 ## CI/CD
 
-The repository uses GitHub Actions for validation and production deployment.
+Pull requests run: `pytest` (backend) + `npm ci`, lint, Vitest, typecheck, and `next build` (frontend).
 
-Pull requests run validation only:
+Pushes to `main` run the same validation then auto-deploy to Vercel via GitHub Actions.
 
-- Backend: install Python dependencies and run `pytest`.
-- Frontend: `npm ci`, lint, Vitest, TypeScript typecheck, and Next.js production build.
-
-Pushes to `main` and manual `workflow_dispatch` runs execute the same validation first. If validation passes, the workflow:
-
-- Deploys the frontend to Vercel from the `frontend/` project root.
-- Deploys the FastAPI backend to Vercel from the `backend/` project root.
-
-Required GitHub repository secrets:
+Required GitHub secrets:
 
 ```text
 VERCEL_TOKEN
 VERCEL_ORG_ID
-VERCEL_PROJECT_ID
-VERCEL_BACKEND_PROJECT_ID
-NEXT_PUBLIC_API_BASE
+VERCEL_PROJECT_ID            # frontend Vercel project
+VERCEL_BACKEND_PROJECT_ID    # backend Vercel project
 ```
 
-Frontend Vercel setup:
+### Vercel configuration
 
-- Project root: `frontend`
-- Framework preset: Next.js
-- Production environment variable: `NEXT_PUBLIC_API_BASE` should point to the deployed backend URL.
+`vercel.json` at the repo root configures the frontend project for the monorepo layout:
 
-Backend Vercel setup:
+```json
+{
+  "installCommand": "cd frontend && npm install",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/.next",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_API_BASE": "https://topoforge-backend-vercel.vercel.app"
+  }
+}
+```
 
-- Project root: `backend`
-- Framework preset: FastAPI / Python
-- Vercel entrypoint: `backend/api/index.py`
-- Vercel rewrite config: `backend/vercel.json`
-- Runtime environment variables: configure `GEMINI_API_KEY`, `PROJECT_TTL_HOURS`, and `PROJECT_CLEANUP_INTERVAL_MINUTES` in Vercel if needed.
+Backend project uses Vercel's FastAPI/Python preset with root directory `backend/`.
 
-Current Vercel production endpoints:
+Production endpoints:
 
-- Frontend: `https://frontend-flame-five-srykz60go6.vercel.app`
-- Backend: `https://topoforge-backend-vercel.vercel.app`
+- **Frontend:** `https://frontend-flame-five-srykz60go6.vercel.app`
+- **Backend:** `https://topoforge-backend-vercel.vercel.app`
 
-Backend-on-Vercel note: this MVP still uses in-memory project state and temporary files. The Vercel deployment stores those temporary files under `/tmp/topoforge`. This is acceptable for quick MVP testing, but long-running production reliability should use persistent storage such as Vercel Blob plus Redis/PostgreSQL.
+> **Note:** This MVP uses in-memory project state and `/tmp` file storage on Vercel. Suitable for demos and quick testing; production workloads should use persistent storage (Vercel Blob + Redis/PostgreSQL).
 
-Deployment jobs are skipped for pull requests. Missing deployment secrets affect only the deploy jobs on `main`, not pull request validation.
+---
 
-## Security Notes
+## Security
 
-This MVP includes important local safeguards:
+Current safeguards:
 
-- File extension validation.
-- File size limit.
+- File extension and MIME validation.
+- 20 MB file size limit.
 - Upload filename sanitization.
-- Random project IDs.
-- Local temporary upload/output folders with 6-hour TTL cleanup by default.
-- No workbook execution.
-- No full workbook upload to AI services.
-- Optional IP redaction for AI helper.
-
-The `/downloads` static mount remains enabled for local MVP convenience only. The primary download path is `/api/projects/{project_id}/download`; production deployments should replace both with authenticated or signed downloads.
+- Random project IDs (no enumerable resource paths).
+- In-memory project state with 6-hour TTL and background cleanup.
+- No workbook code execution.
+- Full workbook bytes never sent to AI services.
+- Optional IP redaction before AI helper calls.
+- Gemini API key sent as `x-goog-api-key` request header (not exposed in URLs or logs).
+- CORS locked to explicit allowed origins; no wildcard Vercel regex.
 
 Production hardening still needed:
 
-- Authentication.
-- Authorization.
+- Authentication and authorization.
 - Persistent database.
 - Virus/malware scanning for uploads.
 - Signed download URLs.
 - Object storage with lifecycle policies.
-- Audit logging.
-- Rate limiting.
+- Rate limiting and audit logging.
+
+---
 
 ## Known Limitations
 
-- Project state is stored in memory and disappears when the backend restarts.
-- Project files are automatically cleaned up after the configured TTL, so generated local files should be downloaded before expiry.
-- Generated diagrams are deterministic but not a replacement for final engineering review.
+- Project state is in-memory and lost on backend restart.
+- Generated files are cleaned up after the TTL — download before the session expires.
 - AI suggestions are optional and should be reviewed before applying.
-- Complex multi-site or multi-VRF topologies may need more rules.
-- The MVP does not include a Draw.io editor clone.
-- The MVP does not include user accounts or collaboration.
+- Complex multi-site or multi-VRF topologies may need additional rules.
+- No Draw.io editor embedded in-app.
+- No user accounts or collaboration.
+
+---
 
 ## Troubleshooting
 
-### Upload fails with "Failed to fetch"
+### "Network error — check that the backend is running"
 
-Check that the backend is running and that the frontend has the correct API base:
+Verify the backend health endpoint:
 
-```powershell
-Invoke-RestMethod http://localhost:8001/api/health
+```bash
+curl http://localhost:8001/api/health
 ```
 
-Then restart the frontend with:
-
-```powershell
-$env:NEXT_PUBLIC_API_BASE="http://localhost:8001"
-npm.cmd run dev -- -p 3001
-```
+If running locally, ensure `NEXT_PUBLIC_API_BASE=http://localhost:8001` is set before starting the frontend. On Vercel, `vercel.json` sets this automatically.
 
 ### Generate opens XML in the browser
 
-The app uses the `/download` endpoint with an attachment response. Regenerate the diagram from the preview page after backend restart.
+Use the `/download` endpoint (attachment response). Regenerate from the preview page after a backend restart.
 
-### Theme or hydration warnings appear in development
+### Theme or hydration warnings in development
 
-The frontend initializes the saved theme with Next.js `Script` using `strategy="beforeInteractive"` and then syncs state in `ThemeProvider` after mount. If an old dev overlay remains visible after pulling changes, refresh the browser tab and restart the frontend dev server.
+Refresh the tab and restart the frontend dev server. The `beforeInteractive` script applies the saved theme before React hydrates.
 
-### AI helper does not produce Gemini suggestions
+### AI helper produces no Gemini suggestions
 
-Set `GEMINI_API_KEY`, restart the backend, and run AI helper again. Without a key, the app falls back to local rule-based suggestions.
+Set `GEMINI_API_KEY` in `.env`, restart the backend, and run AI helper again. Without a key, the app silently falls back to local rule-based suggestions.
 
-### Tests cannot find temporary files
+### Session expiry warning banner
 
-Temporary test files are ignored by Git and removed after each test. Re-run:
+Projects expire after 6 hours. The banner appears at 5.5 hours and switches to an "expired" state at 6 hours. Download your `.drawio` file before the session ends.
 
-```powershell
-python -m pytest backend\tests -c backend\pytest.ini
-```
+---
 
 ## Roadmap
 
@@ -851,15 +630,17 @@ Potential next phases:
 
 - PostgreSQL project persistence.
 - User accounts and teams.
-- Cloud object storage.
+- Cloud object storage with lifecycle policies.
 - Background generation jobs.
 - VLAN and VRF-specific diagrams.
 - Rack elevation diagrams.
 - Cloud provider icon packs.
 - SVG and PNG exports.
 - Version diff between LLD files.
-- More advanced port-channel and LAG handling.
+- Advanced port-channel and LAG handling.
 - More layout templates.
+
+---
 
 ## License
 
