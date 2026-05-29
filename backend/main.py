@@ -45,6 +45,12 @@ LOCAL_CORS_ORIGINS = [
     "http://127.0.0.1:3001",
 ]
 
+VERCEL_FRONTEND_ORIGINS = [
+    "https://frontend-flame-five-srykz60go6.vercel.app",
+    "https://frontend-ammars-projects-79cd5d73.vercel.app",
+    "https://frontend-git-main-ammars-projects-79cd5d73.vercel.app",
+]
+
 ENV_CORS_ORIGINS = [
     origin.strip().rstrip("/")
     for origin in os.getenv("CORS_ALLOW_ORIGINS", "").split(",")
@@ -53,7 +59,7 @@ ENV_CORS_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=LOCAL_CORS_ORIGINS + ENV_CORS_ORIGINS,
+    allow_origins=LOCAL_CORS_ORIGINS + VERCEL_FRONTEND_ORIGINS + ENV_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
