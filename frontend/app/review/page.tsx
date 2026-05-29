@@ -146,7 +146,7 @@ export default function ReviewPage() {
       </div>
 
       {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
-      {toast && <Toast message={toast} onDismiss={dismissToast.current} />}
+      {toast && <Toast message={toast} onDismiss={dismissToast} />}
 
       {/* Issues */}
       {topology.issues.length > 0 && (
