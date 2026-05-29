@@ -17,7 +17,8 @@ vi.mock("@/lib/project-state", () => ({
   resetProjectState: vi.fn(),
   saveAiPreferences: vi.fn(),
   saveProjectId: vi.fn(),
-  saveTopology: vi.fn()
+  saveTopology: vi.fn(),
+  sessionExpiryState: vi.fn(() => "ok")
 }));
 
 describe("UploadPage", () => {

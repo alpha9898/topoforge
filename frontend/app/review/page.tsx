@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { AiSuggestionsPanel } from "@/components/AiSuggestionsPanel";
 import { AppShell } from "@/components/AppShell";
+import { Toast } from "@/components/Toast";
 import { DeviceCorrectionPanel } from "@/components/DeviceCorrectionPanel";
 import { IssueList } from "@/components/IssueList";
 import { LoadingPanel } from "@/components/LoadingPanel";
@@ -19,8 +20,10 @@ export default function ReviewPage() {
   const [topology, setTopology] = useState<TopologyResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
   const [includeIpsInAi, setIncludeIpsInAi] = useState(false);
   const router = useRouter();
+  const dismissToast = useCallback(() => setToast(""), []);
 
   useEffect(() => {
     const saved = loadTopology();
@@ -74,6 +77,7 @@ export default function ReviewPage() {
       const next = await applyTopologyCorrections(projectId, payload);
       setTopology(next);
       saveTopology(next);
+      setToast("Corrections applied.");
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Could not apply corrections");
     } finally {
@@ -142,6 +146,7 @@ export default function ReviewPage() {
       </div>
 
       {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
+      {toast && <Toast message={toast} onDismiss={dismissToast.current} />}
 
       {/* Issues */}
       {topology.issues.length > 0 && (

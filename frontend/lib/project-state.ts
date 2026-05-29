@@ -7,9 +7,23 @@ const TOPOLOGY_KEY = "topoforge.topology";
 const DRAWIO_URL_KEY = "topoforge.drawioUrl";
 const AI_HELPER_KEY = "topoforge.useAiHelper";
 const AI_INCLUDE_IPS_KEY = "topoforge.includeIpsInAi";
+const PROJECT_CREATED_AT_KEY = "topoforge.projectCreatedAt";
+
+const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
+const SESSION_WARN_MS = 5.5 * 60 * 60 * 1000;
 
 export function saveProjectId(projectId: string) {
   localStorage.setItem(PROJECT_ID_KEY, projectId);
+  localStorage.setItem(PROJECT_CREATED_AT_KEY, String(Date.now()));
+}
+
+export function sessionExpiryState(): "ok" | "expiring_soon" | "expired" {
+  const raw = localStorage.getItem(PROJECT_CREATED_AT_KEY);
+  if (!raw) return "ok";
+  const elapsed = Date.now() - Number(raw);
+  if (elapsed >= SESSION_TTL_MS) return "expired";
+  if (elapsed >= SESSION_WARN_MS) return "expiring_soon";
+  return "ok";
 }
 
 export function loadProjectId(): string | null {
@@ -42,6 +56,7 @@ export function resetProjectState() {
   localStorage.removeItem(PROJECT_ID_KEY);
   localStorage.removeItem(TOPOLOGY_KEY);
   localStorage.removeItem(DRAWIO_URL_KEY);
+  localStorage.removeItem(PROJECT_CREATED_AT_KEY);
 }
 
 export function saveAiPreferences(useAiHelper: boolean, includeIpsInAi: boolean) {

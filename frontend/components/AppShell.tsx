@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, Network } from "lucide-react";
+import { AlertTriangle, Check, Network } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { sessionExpiryState } from "@/lib/project-state";
 
 const steps = [
   { href: "/upload", label: "Upload" },
@@ -17,6 +18,7 @@ const steps = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const activeIndex = Math.max(0, steps.findIndex((s) => pathname.startsWith(s.href)));
+  const [expiryState, setExpiryState] = useState<"ok" | "expiring_soon" | "expired">("ok");
 
   const [dirState, setDirState] = useState<{ direction: "forward" | "backward"; lastIndex: number }>(
     { direction: "forward", lastIndex: activeIndex }
@@ -27,6 +29,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       lastIndex: activeIndex,
     });
   }
+
+  useEffect(() => {
+    setExpiryState(sessionExpiryState());
+    const interval = setInterval(() => setExpiryState(sessionExpiryState()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -119,6 +127,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </header>
+
+      {expiryState !== "ok" && (
+        <div className={`flex items-center gap-2 px-4 py-2 text-xs ${expiryState === "expired" ? "bg-[var(--danger-soft)] text-[var(--danger)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"}`}>
+          <AlertTriangle aria-hidden size={13} className="shrink-0" />
+          {expiryState === "expired"
+            ? "Your session has expired. Please upload your file again."
+            : "Your session expires soon — download your diagram now."}
+        </div>
+      )}
 
       <main
         key={pathname}

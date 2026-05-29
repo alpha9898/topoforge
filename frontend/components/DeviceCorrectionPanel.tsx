@@ -2,6 +2,7 @@
 
 import { Plus, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import type { Device, TopologyResponse } from "@/lib/types";
 
@@ -38,6 +39,8 @@ export function DeviceCorrectionPanel({
 }) {
   const [drafts, setDrafts] = useState<DeviceDraft[]>(() => topology.devices.map(toDraft));
   const [addedDevices, setAddedDevices] = useState<AddedDeviceDraft[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const router = useRouter();
 
   const topologyKey = useMemo(() => topology.devices.map((device) => `${device.id}:${device.name}:${device.type}`).join("|"), [topology.devices]);
 
@@ -45,17 +48,29 @@ export function DeviceCorrectionPanel({
     resetFromTopology();
   }, [topologyKey]);
 
+  useEffect(() => {
+    if (!isDirty) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
   function resetFromTopology() {
     setDrafts(topology.devices.map(toDraft));
     setAddedDevices([]);
+    setIsDirty(false);
   }
 
   function updateDraft(id: string, patch: Partial<DeviceDraft>) {
     setDrafts((current) => current.map((draft) => (draft.id === id ? { ...draft, ...patch } : draft)));
+    setIsDirty(true);
   }
 
   function updateAdded(index: number, patch: Partial<AddedDeviceDraft>) {
     setAddedDevices((current) => current.map((draft, draftIndex) => (draftIndex === index ? { ...draft, ...patch } : draft)));
+    setIsDirty(true);
   }
 
   async function apply() {
@@ -85,6 +100,7 @@ export function DeviceCorrectionPanel({
       }));
 
     await onApply({ device_updates: updates, removed_device_ids: removed, added_devices: additions });
+    setIsDirty(false);
   }
 
   return (

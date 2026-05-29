@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, type DragEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUp, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -21,18 +21,37 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [useAiHelper, setUseAiHelper] = useState(false);
   const [includeIpsInAi, setIncludeIpsInAi] = useState(false);
   const router = useRouter();
 
-  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0] ?? null;
+  function validateAndSet(selected: File | null) {
     setError("");
     if (!selected) { setFile(null); return; }
     const ext = selected.name.slice(selected.name.lastIndexOf(".")).toLowerCase();
     if (!ALLOWED.includes(ext)) { setError("Accepted formats: .xlsx, .xls, .xlsm, .csv"); setFile(null); return; }
     if (selected.size > MAX_FILE_SIZE) { setError("File must be 20 MB or less."); setFile(null); return; }
     setFile(selected);
+  }
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    validateAndSet(event.target.files?.[0] ?? null);
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(false);
+    validateAndSet(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  function onDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(true);
+  }
+
+  function onDragLeave() {
+    setDragging(false);
   }
 
   async function start() {
@@ -78,10 +97,15 @@ export default function UploadPage() {
             <div
               className={[
                 "flex min-h-48 cursor-pointer flex-col items-center justify-center gap-3 rounded-md border-2 border-dashed p-8 text-center transition-colors",
-                file
+                dragging
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] scale-[1.01]"
+                  : file
                   ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                   : "border-[var(--line)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-elevated)]",
               ].join(" ")}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
             >
               <FileUp
                 aria-hidden
@@ -95,7 +119,7 @@ export default function UploadPage() {
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-medium text-[var(--text)]">Click to select a file</p>
+                  <p className="text-sm font-medium text-[var(--text)]">Click to select or drag a file here</p>
                   <p className="mt-0.5 text-xs text-[var(--muted)]">Excel or CSV, up to 20 MB</p>
                 </div>
               )}

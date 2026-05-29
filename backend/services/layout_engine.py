@@ -50,8 +50,10 @@ def layout_topology(topology: Topology) -> Topology:
     side_groups: dict[tuple[str, str], list[tuple[Cable, bool]]] = {}
 
     for cable in topology.cables:
-        source = device_map[cable.sourceDeviceId]
-        target = device_map[cable.targetDeviceId]
+        source = device_map.get(cable.sourceDeviceId)
+        target = device_map.get(cable.targetDeviceId)
+        if not source or not target:
+            continue
         source_side = _anchor_side_for(source, target, _endpoint_role(cable, source, target, True))
         target_side = _anchor_side_for(target, source, _endpoint_role(cable, target, source, False))
         endpoint_sides[(cable.id, True)] = source_side
@@ -61,8 +63,12 @@ def layout_topology(topology: Topology) -> Topology:
 
     endpoint_points = _assign_side_slot_offsets(side_groups, endpoint_sides)
     for cable in topology.cables:
-        cable.exitX, cable.exitY = endpoint_points[(cable.id, True)]
-        cable.entryX, cable.entryY = endpoint_points[(cable.id, False)]
+        src_point = endpoint_points.get((cable.id, True))
+        tgt_point = endpoint_points.get((cable.id, False))
+        if src_point:
+            cable.exitX, cable.exitY = src_point
+        if tgt_point:
+            cable.entryX, cable.entryY = tgt_point
     return topology
 
 

@@ -13,10 +13,29 @@ export function getApiBase(): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${getApiBase()}${path}`, init);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBase()}${path}`, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Request timed out — the server took too long to respond.");
+    }
+    throw new Error("Network error — check that the backend is running.");
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(body.detail ?? "Request failed");
+    const detail: string = body.detail ?? "Request failed";
+    if (response.status === 404) {
+      throw new Error("Session not found — it may have expired. Please upload your file again.");
+    }
+    if (response.status >= 500) {
+      throw new Error(`Server error — please retry. (${detail})`);
+    }
+    throw new Error(detail);
   }
   return response.json() as Promise<T>;
 }
