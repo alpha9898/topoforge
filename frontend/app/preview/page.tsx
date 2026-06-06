@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { IssueList } from "@/components/IssueList";
 import { LoadingPanel } from "@/components/LoadingPanel";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
+import { TopologyCanvas } from "@/components/TopologyCanvas";
 import { TopologyTables } from "@/components/TopologyTables";
 import { downloadDrawioFile, downloadUrl, generateDrawio } from "@/lib/api";
 import { loadDrawioUrl, loadProjectId, loadTopology, saveDrawioUrl } from "@/lib/project-state";
@@ -56,11 +57,11 @@ export default function PreviewPage() {
       <div className="mb-6 flex w-full flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">Step 4</p>
-          <h2 className="text-xl font-semibold text-[var(--text)]">Generate diagram</h2>
+          <h2 className="text-xl font-semibold text-[var(--text)]">Preview &amp; generate diagram</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             {drawioUrl
-              ? "Diagram generated. Download or regenerate below."
-              : "TopoForge will produce Draw.io XML with devices, cables, port labels, and reference tables."}
+              ? "Diagram generated — download or regenerate below. The preview reflects the exported layout."
+              : "A live preview of your topology. Generate the Draw.io file to export with reference tables, port labels, and a legend."}
             {issueCount > 0 && ` ${issueCount} issue${issueCount > 1 ? "s" : ""} will appear in the diagram notes.`}
           </p>
         </div>
@@ -93,6 +94,10 @@ export default function PreviewPage() {
       </div>
 
       {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
+
+      <div className="mb-5 w-full">
+        <TopologyCanvas topology={topology} />
+      </div>
 
       {issueCount > 0 && (
         <div className="mb-5 w-full">

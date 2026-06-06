@@ -11,6 +11,7 @@ import { IssueList } from "@/components/IssueList";
 import { LoadingPanel } from "@/components/LoadingPanel";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import { StandardPathPanel } from "@/components/StandardPathPanel";
+import { TopologyCanvas } from "@/components/TopologyCanvas";
 import { TopologyTables } from "@/components/TopologyTables";
 import { applyTopologyCorrections, parseProject } from "@/lib/api";
 import { loadAiPreferences, loadProjectId, loadTopology, saveAiPreferences, saveTopology } from "@/lib/project-state";
@@ -147,6 +148,12 @@ export default function ReviewPage() {
 
       {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
       {toast && <Toast message={toast} onDismiss={dismissToast} />}
+
+      {/* Live preview — updates as you edit */}
+      <div className="mb-5 w-full">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-[var(--muted)]">Live preview</h3>
+        <TopologyCanvas compact topology={topology} />
+      </div>
 
       {/* Issues */}
       {topology.issues.length > 0 && (
