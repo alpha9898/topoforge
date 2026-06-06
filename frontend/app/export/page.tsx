@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileJson, RotateCcw } from "lucide-react";
+import { Download, ExternalLink, FileCode, FileJson, FileText, Image as ImageIcon, RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
+import { TopologyCanvas } from "@/components/TopologyCanvas";
 import { downloadUrl } from "@/lib/api";
+import { exportPdf, exportPng, exportSvg } from "@/lib/diagram-export";
 import { loadDrawioUrl, loadTopology, resetProjectState } from "@/lib/project-state";
 import type { TopologyResponse } from "@/lib/types";
 
@@ -13,11 +15,34 @@ export default function ExportPage() {
   const [drawioUrl, setDrawioUrl] = useState<string | null>(null);
   const [topology, setTopology] = useState<TopologyResponse | null>(null);
   const router = useRouter();
+  const [exporting, setExporting] = useState<"png" | "svg" | "pdf" | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setDrawioUrl(loadDrawioUrl());
     setTopology(loadTopology());
   }, []);
+
+  async function runExport(kind: "png" | "svg" | "pdf") {
+    if (!topology) return;
+    setExporting(kind);
+    setError("");
+    try {
+      if (kind === "png") await exportPng(topology);
+      else if (kind === "pdf") await exportPdf(topology);
+      else exportSvg(topology);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Export failed");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  function openInDiagramsNet() {
+    if (!drawioUrl) return;
+    const target = `https://app.diagrams.net/?url=${encodeURIComponent(downloadUrl(drawioUrl))}`;
+    window.open(target, "_blank", "noopener,noreferrer");
+  }
 
   function downloadTopologyJson() {
     if (!topology) return;
@@ -47,6 +72,14 @@ export default function ExportPage() {
         </p>
       </div>
 
+      {topology && (
+        <div className="mb-5 w-full">
+          <TopologyCanvas compact topology={topology} />
+        </div>
+      )}
+
+      {error && <p key={error} className="status-error anim-shake mb-5 w-full px-4 py-2.5 text-sm">{error}</p>}
+
       <div className="app-card anim-fade-in-up w-full p-5">
         <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">Download files</h3>
         <p className="mb-4 text-sm text-[var(--muted)]">
@@ -70,10 +103,38 @@ export default function ExportPage() {
             </PrimaryButton>
           )}
 
+          {drawioUrl && (
+            <SecondaryButton onClick={openInDiagramsNet}>
+              <ExternalLink aria-hidden size={14} />
+              Open in diagrams.net
+            </SecondaryButton>
+          )}
+
           <SecondaryButton disabled={!topology} onClick={downloadTopologyJson}>
             <FileJson aria-hidden size={14} />
             Download topology JSON
           </SecondaryButton>
+        </div>
+
+        <div className="mt-5 border-t border-[var(--line)] pt-4">
+          <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">Image &amp; PDF</h3>
+          <p className="mb-3 text-sm text-[var(--muted)]">
+            Download the diagram as a picture for docs, tickets, or slides — matches the preview above.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <SecondaryButton disabled={!topology || exporting !== null} onClick={() => runExport("png")}>
+              <ImageIcon aria-hidden size={14} />
+              {exporting === "png" ? "Rendering…" : "PNG"}
+            </SecondaryButton>
+            <SecondaryButton disabled={!topology || exporting !== null} onClick={() => runExport("svg")}>
+              <FileCode aria-hidden size={14} />
+              SVG
+            </SecondaryButton>
+            <SecondaryButton disabled={!topology || exporting !== null} onClick={() => runExport("pdf")}>
+              <FileText aria-hidden size={14} />
+              {exporting === "pdf" ? "Rendering…" : "PDF"}
+            </SecondaryButton>
+          </div>
         </div>
 
         <div className="mt-5 border-t border-[var(--line)] pt-4">

@@ -51,6 +51,9 @@ VERCEL_FRONTEND_ORIGINS = [
     "https://frontend-git-main-ammars-projects-79cd5d73.vercel.app",
 ]
 
+# Allow diagrams.net to fetch a generated .drawio via the "Open in diagrams.net" (?url=) flow.
+DIAGRAMS_NET_ORIGINS = ["https://app.diagrams.net"]
+
 ENV_CORS_ORIGINS = [
     origin.strip().rstrip("/")
     for origin in os.getenv("CORS_ALLOW_ORIGINS", "").split(",")
@@ -59,7 +62,7 @@ ENV_CORS_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=LOCAL_CORS_ORIGINS + VERCEL_FRONTEND_ORIGINS + ENV_CORS_ORIGINS,
+    allow_origins=LOCAL_CORS_ORIGINS + VERCEL_FRONTEND_ORIGINS + DIAGRAMS_NET_ORIGINS + ENV_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],

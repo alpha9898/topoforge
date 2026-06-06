@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { TopologyCanvas, computeDiagramBounds } from "@/components/TopologyCanvas";
+import { TopologyCanvas } from "@/components/TopologyCanvas";
+import { computeDiagramBounds } from "@/lib/diagram-geometry";
 import type { TopologyResponse } from "@/lib/types";
 
 const topology: TopologyResponse = {

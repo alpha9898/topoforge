@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
-import type { Cable, Device, TopologyResponse } from "@/lib/types";
-import { cableVisual, deviceShapeSize, deviceVisual } from "@/lib/diagram-theme";
+import { Maximize, Maximize2, Minimize, ZoomIn, ZoomOut } from "lucide-react";
+import type { TopologyResponse } from "@/lib/types";
+import { cableVisual, deviceVisual } from "@/lib/diagram-theme";
+import { type Box, type Pt, anchor, cablePath, computeDiagramBounds, parallelOffsets, shapeBox } from "@/lib/diagram-geometry";
 
-type Pt = { x: number; y: number };
-type Box = { x: number; y: number; w: number; h: number };
 type View = { k: number; t: Pt };
 type Tooltip = { x: number; y: number; title: string; lines: string[]; color: string };
 
@@ -18,67 +17,6 @@ type Props = {
 };
 
 const clamp = (value: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, value));
-
-// The centered shape box that Draw.io edges anchor to (see drawio_generator._add_device).
-function shapeBox(device: Device): Box {
-  const [w, h] = deviceShapeSize(device.type);
-  return { x: device.x + Math.max(0, (device.width - w) / 2), y: device.y, w, h };
-}
-
-function anchor(box: Box, fx: number, fy: number): Pt {
-  return { x: box.x + fx * box.w, y: box.y + fy * box.h };
-}
-
-// Mirror drawio_generator._parallel_cable_offsets (primary device-pair grouping).
-function parallelOffsets(cables: Cable[]): Map<string, number> {
-  const groups = new Map<string, Cable[]>();
-  for (const cable of cables) {
-    const pair = [cable.sourceDeviceId, cable.targetDeviceId].sort().join("|");
-    const arr = groups.get(pair);
-    if (arr) arr.push(cable);
-    else groups.set(pair, [cable]);
-  }
-  const offsets = new Map<string, number>();
-  for (const arr of groups.values()) {
-    if (arr.length <= 1) {
-      if (arr.length === 1) offsets.set(arr[0].id, 0);
-      continue;
-    }
-    const step = Math.min(54, 28 + arr.length * 3);
-    const start = -((arr.length - 1) * step) / 2;
-    arr.forEach((cable, index) => offsets.set(cable.id, start + index * step));
-  }
-  return offsets;
-}
-
-function cablePath(src: Pt, tgt: Pt, offset: number): string {
-  if (!offset) return `M ${src.x} ${src.y} L ${tgt.x} ${tgt.y}`;
-  const dx = tgt.x - src.x;
-  const dy = tgt.y - src.y;
-  const len = Math.max(Math.hypot(dx, dy), 1);
-  const nx = -dy / len;
-  const ny = dx / len;
-  const mx = (src.x + tgt.x) / 2 + nx * offset;
-  const my = (src.y + tgt.y) / 2 + ny * offset;
-  return `M ${src.x} ${src.y} Q ${mx} ${my} ${tgt.x} ${tgt.y}`;
-}
-
-export function computeDiagramBounds(devices: Device[]): Box {
-  if (devices.length === 0) return { x: 0, y: 0, w: 1, h: 1 };
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const device of devices) {
-    const box = shapeBox(device);
-    // Include the label area drawn below each shape.
-    minX = Math.min(minX, box.x, device.x - 20);
-    minY = Math.min(minY, box.y);
-    maxX = Math.max(maxX, box.x + box.w, device.x + device.width + 20);
-    maxY = Math.max(maxY, box.y + box.h + 44);
-  }
-  return { x: minX, y: minY, w: Math.max(maxX - minX, 1), h: Math.max(maxY - minY, 1) };
-}
 
 function computeFit(bounds: Box, size: { w: number; h: number }, pad = 48): View {
   const raw = Math.min((size.w - pad * 2) / bounds.w, (size.h - pad * 2) / bounds.h, 2.2);
@@ -100,6 +38,7 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
   const [view, setView] = useState<View>({ k: 1, t: { x: 0, y: 0 } });
   const [hoverDevice, setHoverDevice] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const deviceMap = useMemo(() => new Map(topology.devices.map((d) => [d.id, d])), [topology.devices]);
   const bounds = useMemo(() => computeDiagramBounds(topology.devices), [topology.devices]);
@@ -153,6 +92,16 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
     return () => svg.removeEventListener("wheel", onWheel);
   }, []);
 
+  // Exit fullscreen on Escape.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
+
   const zoomBy = useCallback(
     (factor: number) => {
       setView((v) => {
@@ -198,10 +147,10 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
   return (
     <div
       ref={containerRef}
-      className="relative w-full overflow-hidden rounded-lg border border-[var(--line)]"
+      className={`relative w-full overflow-hidden border border-[var(--line)] ${fullscreen ? "fixed inset-0 z-50 rounded-none" : "rounded-lg"}`}
       style={{
-        height: containerHeight,
-        minHeight: compact ? undefined : 480,
+        height: fullscreen ? "100vh" : containerHeight,
+        minHeight: fullscreen ? undefined : compact ? undefined : 480,
         backgroundColor: "var(--surface)",
         backgroundImage: "radial-gradient(var(--line) 1px, transparent 1px)",
         backgroundSize: "22px 22px",
@@ -393,6 +342,9 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
         </CanvasButton>
         <CanvasButton label="Fit to screen" onClick={fit}>
           <Maximize2 aria-hidden size={15} />
+        </CanvasButton>
+        <CanvasButton label={fullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={() => setFullscreen((value) => !value)}>
+          {fullscreen ? <Minimize aria-hidden size={15} /> : <Maximize aria-hidden size={15} />}
         </CanvasButton>
       </div>
 
