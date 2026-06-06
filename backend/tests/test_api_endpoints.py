@@ -1,6 +1,8 @@
 """Integration tests for corrections, clarify, generate, and download endpoints."""
 from __future__ import annotations
 
+import io
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -21,7 +23,7 @@ def setup_function():
 
 
 def _make_project_with_topology() -> str:
-    upload_path = Path("/tmp/test_upload.xlsx")
+    upload_path = Path(tempfile.gettempdir()) / "topoforge_test_upload.xlsx"
     upload_path.touch()
     project = create_project(upload_path, "test.xlsx")
     topology = validate_topology(
@@ -160,7 +162,7 @@ class TestClarifyEndpoint:
         assert "cables" in data
 
     def test_submit_device_type_answer(self):
-        upload_path = Path("/tmp/test_upload2.xlsx")
+        upload_path = Path(tempfile.gettempdir()) / "topoforge_test_upload2.xlsx"
         upload_path.touch()
         project = create_project(upload_path, "test2.xlsx")
         topology = validate_topology(
@@ -209,7 +211,7 @@ class TestGenerateEndpoint:
 
     def test_generate_with_dangling_cable_reference_does_not_crash(self):
         """Topology with a cable referencing a removed device must not raise KeyError."""
-        upload_path = Path("/tmp/test_dangling.xlsx")
+        upload_path = Path(tempfile.gettempdir()) / "topoforge_test_dangling.xlsx"
         upload_path.touch()
         project = create_project(upload_path, "dangling.xlsx")
         topology = validate_topology(
@@ -231,3 +233,62 @@ class TestGenerateEndpoint:
 
         response = client.post(f"/api/projects/{project.id}/generate")
         assert response.status_code == 200
+
+
+class TestLayoutInResponses:
+    """Live preview support: topology-returning endpoints must emit layout coordinates."""
+
+    def test_corrections_response_includes_layout_coordinates(self):
+        project_id = _make_project_with_topology()
+        response = client.post(
+            f"/api/projects/{project_id}/corrections",
+            json={"device_updates": [], "removed_device_ids": [], "added_devices": []},
+        )
+        assert response.status_code == 200
+        devices = response.json()["devices"]
+        assert devices
+        assert all(d["x"] > 0 and d["y"] > 0 for d in devices)
+
+    def test_clarifications_response_includes_layout_coordinates(self):
+        project_id = _make_project_with_topology()
+        response = client.post(
+            f"/api/projects/{project_id}/clarifications",
+            json={"answers": []},
+        )
+        assert response.status_code == 200
+        devices = response.json()["devices"]
+        assert devices
+        assert all(d["x"] > 0 and d["y"] > 0 for d in devices)
+
+    def test_parse_response_includes_layout_coordinates(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(["Device", "Port", "Connected To", "Peer Port"])
+        sheet.append(["Firewall-1", "eth1", "SW1", "Gi1/0/1"])
+        sheet.append(["SW1", "Gi1/0/2", "Server-1", "eth0"])
+        buffer = io.BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+
+        upload = client.post(
+            "/api/upload",
+            files={
+                "file": (
+                    "network.xlsx",
+                    buffer.read(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+        assert upload.status_code == 200
+        project_id = upload.json()["project_id"]
+
+        response = client.post(f"/api/projects/{project_id}/parse", json={})
+        assert response.status_code == 200
+        body = response.json()
+        devices = body["devices"]
+        assert len(devices) >= 3
+        assert all(d["x"] > 0 and d["y"] > 0 for d in devices)
+        for cable in body["cables"]:
+            assert 0.0 <= cable["exitX"] <= 1.0
+            assert 0.0 <= cable["entryY"] <= 1.0

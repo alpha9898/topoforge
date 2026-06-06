@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from models import Topology
 from services.ai_parser import enrich_topology_connections
+from services.layout_engine import layout_topology
 from services.project_store import get_project
 from services.topology_corrections import TopologyCorrections, apply_topology_corrections, corrections_to_dict
 
@@ -20,4 +21,5 @@ def correct_project(project_id: str, corrections: TopologyCorrections) -> Topolo
     project.topology.aiSuggestions = project.ai_suggestions
     if project.ai_suggestions:
         project.topology = enrich_topology_connections(project.topology, project.ai_suggestions)
+    project.topology = layout_topology(project.topology)
     return project.topology

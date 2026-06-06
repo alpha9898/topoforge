@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from models import Topology
 from services.ai_parser import apply_ai_suggestions_to_parsed, build_ai_suggestions, enrich_topology_connections
 from services.excel_parser import parse_file
+from services.layout_engine import layout_topology
 from services.project_store import get_project
 from services.topology_builder import build_topology
 from services.topology_completion import complete_standard_topology
@@ -49,5 +50,6 @@ def parse_project(project_id: str, options: ParseOptions | None = None) -> Topol
         topology.aiSuggestions = project.ai_suggestions
     if options.use_ai_helper or project.ai_suggestions:
         topology = enrich_topology_connections(topology, project.ai_suggestions, include_ips=options.include_ips_in_ai)
+    topology = layout_topology(topology)
     project.topology = topology
     return topology

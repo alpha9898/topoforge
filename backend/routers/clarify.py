@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from models import Answer, ClarificationQuestion, Topology
 from services.clarification_engine import apply_answers, build_questions
+from services.layout_engine import layout_topology
 from services.project_store import get_project
 
 router = APIRouter(tags=["clarifications"])
@@ -34,4 +35,5 @@ def submit_clarifications(project_id: str, request: AnswersRequest) -> Topology:
         raise HTTPException(status_code=404, detail="Parsed project not found.")
     project.topology = apply_answers(project.topology, request.answers)
     project.questions = build_questions(project.topology)
+    project.topology = layout_topology(project.topology)
     return project.topology
