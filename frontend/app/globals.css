@@ -281,6 +281,27 @@ button, input, select, textarea {
   animation: shake-x 360ms var(--ease-out-expo);
 }
 
+/* ─── Topology canvas ────────────────────────────────── */
+
+/* Marching dots that flow along each cable (source → target). */
+@keyframes topo-flow {
+  to { stroke-dashoffset: -16; }
+}
+
+/* Staggered fade-in for devices and links as the diagram mounts. */
+@keyframes topo-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.topo-flow {
+  animation: topo-flow 1.5s linear infinite;
+}
+
+.topo-enter {
+  animation: topo-enter 340ms var(--ease-out-quart) both;
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

@@ -81,7 +81,7 @@ export function computeDiagramBounds(devices: Device[]): Box {
 }
 
 function computeFit(bounds: Box, size: { w: number; h: number }, pad = 48): View {
-  const raw = Math.min((size.w - pad * 2) / bounds.w, (size.h - pad * 2) / bounds.h, 1.5);
+  const raw = Math.min((size.w - pad * 2) / bounds.w, (size.h - pad * 2) / bounds.h, 2.2);
   const k = Number.isFinite(raw) && raw > 0 ? raw : 1;
   return {
     k,
@@ -94,8 +94,9 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{ active: boolean; moved: boolean; last: Pt }>({ active: false, moved: false, last: { x: 0, y: 0 } });
 
-  const height = compact ? 340 : 560;
-  const [size, setSize] = useState({ w: 960, h: height });
+  const fallbackHeight = compact ? 420 : 640;
+  const containerHeight = compact ? "420px" : "min(78vh, 860px)";
+  const [size, setSize] = useState({ w: 960, h: fallbackHeight });
   const [view, setView] = useState<View>({ k: 1, t: { x: 0, y: 0 } });
   const [hoverDevice, setHoverDevice] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
@@ -199,7 +200,8 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
       ref={containerRef}
       className="relative w-full overflow-hidden rounded-lg border border-[var(--line)]"
       style={{
-        height,
+        height: containerHeight,
+        minHeight: compact ? undefined : 480,
         backgroundColor: "var(--surface)",
         backgroundImage: "radial-gradient(var(--line) 1px, transparent 1px)",
         backgroundSize: "22px 22px",
@@ -241,7 +243,7 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
               const incident = hoverDevice != null && (cable.sourceDeviceId === hoverDevice || cable.targetDeviceId === hoverDevice);
               const dimmed = hoverDevice != null && !incident;
               return (
-                <g key={cable.id}>
+                <g key={cable.id} className="topo-enter" style={{ animationDelay: "80ms" }}>
                   <path
                     d={path}
                     fill="none"
@@ -281,12 +283,24 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
                     opacity={dimmed ? 0.18 : 1}
                     style={{ pointerEvents: "none", transition: "opacity 120ms ease, stroke-width 120ms ease" }}
                   />
+                  {/* Animated flow: marching dots travelling source -> target */}
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={visual.color}
+                    strokeWidth={incident ? 3 : 2}
+                    strokeLinecap="round"
+                    strokeDasharray="3 13"
+                    className="topo-flow"
+                    opacity={dimmed ? 0.12 : 0.9}
+                    style={{ pointerEvents: "none", animationDuration: incident ? "0.55s" : "1.5s" }}
+                  />
                 </g>
               );
             })}
 
             {/* Devices (over cables) */}
-            {topology.devices.map((device) => {
+            {topology.devices.map((device, index) => {
               const box = shapeBox(device);
               const visual = deviceVisual(device.type);
               const Icon = visual.Icon;
@@ -300,8 +314,9 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
                 <g
                   key={device.id}
                   data-testid="device"
+                  className="topo-enter"
                   transform={`translate(${box.x} ${box.y})`}
-                  style={{ cursor: onSelectDevice ? "pointer" : "default" }}
+                  style={{ cursor: onSelectDevice ? "pointer" : "default", animationDelay: `${Math.min(index * 35, 560)}ms` }}
                   onMouseEnter={(e) => {
                     setHoverDevice(device.id);
                     showTip(e, { title: device.name, color: visual.color, lines: tipLines });
@@ -385,7 +400,7 @@ export function TopologyCanvas({ topology, compact = false, highlightDeviceId, o
       {tooltip && (
         <div
           className="pointer-events-none absolute z-10 max-w-[260px] rounded-md border border-[var(--line)] bg-[var(--surface-elevated)] px-2.5 py-1.5 text-xs shadow-md"
-          style={{ left: clamp(tooltip.x + 12, 4, size.w - 200), top: clamp(tooltip.y + 12, 4, height - 60) }}
+          style={{ left: clamp(tooltip.x + 12, 4, size.w - 200), top: clamp(tooltip.y + 12, 4, size.h - 60) }}
         >
           <p className="flex items-center gap-1.5 font-semibold text-[var(--text)]">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: tooltip.color }} aria-hidden />
