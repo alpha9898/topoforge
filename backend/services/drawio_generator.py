@@ -9,7 +9,10 @@ from models import Cable, Device, Topology
 DEVICE_STYLES = {
     "cloud": "image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;shadow=0;dashed=0;spacingTop=3;image=img/lib/active_directory/internet_cloud.svg;",
     "isp_router": "strokeColor=#ffffff;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#036897;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.routers.ip_telephony_router;",
-    "firewall": "strokeColor=#ffffff;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#C62828;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.security.firewall;",
+    "firewall": (
+        "strokeColor=#ffffff;fillColor=#C62828;html=1;labelPosition=right;align=left;spacingLeft=15;"
+        "shadow=0;dashed=0;outlineConnect=0;shape=mxgraph.rack.general.cat5e_rack_mount_patch_panel_24_ports;"
+    ),
     "switch": "html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;shadow=0;dashed=0;shape=mxgraph.rack.hpe_aruba.switches.j9772a_2530_48g_poeplus_switch;points=[[0.12,0.39,0,0,0],[0.16,0.39,0,0,0],[0.19,0.39,0,0,0],[0.38,0.36,0,0,0],[0.41,0.36,0,0,0],[0.79,0.36,0,0,0],[0.81,0.36,0,0,0],[0.85,0.36,0,0,0],[0.88,0.68,0,0,0]];",
     "server": "verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.server;",
     "storage": "verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#EF6C00;shape=mxgraph.azure.storage;",
@@ -32,7 +35,7 @@ DEVICE_STYLES = {
 DEVICE_GEOMETRY = {
     "cloud": (120, 80),
     "isp_router": (90, 70),
-    "firewall": (110, 78),
+    "firewall": (190, 48),
     "switch": (190, 46),
     "server": (74, 92),
     "storage": (80, 80),

@@ -30,7 +30,7 @@ import {
 export const DEVICE_GEOMETRY: Record<string, [number, number]> = {
   cloud: [120, 80],
   isp_router: [90, 70],
-  firewall: [110, 78],
+  firewall: [190, 48],
   switch: [190, 46],
   server: [74, 92],
   storage: [80, 80],

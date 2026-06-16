@@ -60,7 +60,7 @@ def test_missing_port_warning_and_drawio_xml():
     assert any(issue.code == "missing_source_port" for issue in topology.issues)
     assert "<mxfile" in xml
     assert "device-firewall-1" in xml
-    assert "shape=mxgraph.cisco.security.firewall" in xml
+    assert "shape=mxgraph.rack.general.cat5e_rack_mount_patch_panel_24_ports" in xml
     assert "shape=mxgraph.rack.hpe_aruba.switches" in xml
     assert "Firewall-1 ? -&gt; SW1 Gi1/0/1" in xml
     assert "Gi1/0/1" in xml
