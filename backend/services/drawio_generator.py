@@ -12,7 +12,17 @@ DEVICE_STYLES = {
     "firewall": "strokeColor=#ffffff;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#C62828;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.security.firewall;",
     "switch": "html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;shadow=0;dashed=0;shape=mxgraph.rack.hpe_aruba.switches.j9772a_2530_48g_poeplus_switch;points=[[0.12,0.39,0,0,0],[0.16,0.39,0,0,0],[0.19,0.39,0,0,0],[0.38,0.36,0,0,0],[0.41,0.36,0,0,0],[0.79,0.36,0,0,0],[0.81,0.36,0,0,0],[0.85,0.36,0,0,0],[0.88,0.68,0,0,0]];",
     "server": "verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.server;",
-    "storage": "strokeColor=#666666;html=1;labelPosition=right;align=left;spacingLeft=15;shadow=0;dashed=0;outlineConnect=0;shape=mxgraph.rack.general.cat5e_rack_mount_patch_panel_24_ports;points=[[0.07,0.49,0,0,0],[0.13,0.5,0,0,0],[0.81,0.49,0,0,0],[0.89,0.49,0,0,0]];",
+    "storage": "verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#EF6C00;shape=mxgraph.azure.storage;",
+    "patch_panel": (
+        "strokeColor=#666666;html=1;labelPosition=right;align=left;spacingLeft=15;shadow=0;dashed=0;outlineConnect=0;"
+        "shape=mxgraph.rack.general.cat5e_rack_mount_patch_panel_24_ports;"
+        "points=[[0.0208,0.5,0,0,0],[0.0625,0.5,0,0,0],[0.1042,0.5,0,0,0],[0.1458,0.5,0,0,0],"
+        "[0.1875,0.5,0,0,0],[0.2292,0.5,0,0,0],[0.2708,0.5,0,0,0],[0.3125,0.5,0,0,0],"
+        "[0.3542,0.5,0,0,0],[0.3958,0.5,0,0,0],[0.4375,0.5,0,0,0],[0.4792,0.5,0,0,0],"
+        "[0.5208,0.5,0,0,0],[0.5625,0.5,0,0,0],[0.6042,0.5,0,0,0],[0.6458,0.5,0,0,0],"
+        "[0.6875,0.5,0,0,0],[0.7292,0.5,0,0,0],[0.7708,0.5,0,0,0],[0.8125,0.5,0,0,0],"
+        "[0.8542,0.5,0,0,0],[0.8958,0.5,0,0,0],[0.9375,0.5,0,0,0],[0.9792,0.5,0,0,0]];"
+    ),
     "pdu": "shape=mxgraph.rack.general.horizontal_pdu;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;strokeColor=#666666;fillColor=#f5f5f5;shadow=0;dashed=0;outlineConnect=0;",
     "vpn_gateway": "html=1;strokeWidth=1;shadow=0;dashed=0;shape=mxgraph.ios7.misc.vpn;fillColor=#007AFF;strokeColor=none;buttonText=;strokeColor2=#222222;fontColor=#222222;fontSize=8;verticalLabelPosition=bottom;verticalAlign=top;align=center;sketch=0;",
     "admin_endpoint": "shape=mxgraph.azure.laptop;verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00A4EF;",
@@ -25,7 +35,8 @@ DEVICE_GEOMETRY = {
     "firewall": (110, 78),
     "switch": (190, 46),
     "server": (74, 92),
-    "storage": (170, 48),
+    "storage": (80, 80),
+    "patch_panel": (190, 48),
     "pdu": (180, 42),
     "vpn_gateway": (76, 76),
     "admin_endpoint": (86, 68),
@@ -102,6 +113,7 @@ def generate_drawio_xml(topology: Topology) -> str:
     _add_legend(root, topology, reference_x + _cable_reference_width() + 40, REFERENCE_START_Y)
     _add_switch_port_summary(root, topology, device_map, reference_x, _cable_reference_bottom(topology) + REFERENCE_GAP)
     _add_source_color_table(root, topology, device_map, source_color_map, reference_x, _source_color_table_y(topology))
+    _add_patch_panel_port_summary(root, topology, device_map, reference_x, _patch_panel_port_summary_y(topology))
     _add_notes(root, topology, notes_y)
     return ET.tostring(mxfile, encoding="unicode", xml_declaration=True)
 
@@ -146,11 +158,18 @@ def _add_device(root: ET.Element, device: Device) -> None:
 def _add_cable(root: ET.Element, cable: Cable, devices: dict[str, Device], offset: int, source_color_map: dict[str, tuple[str, str]]) -> None:
     _, dashed = CABLE_STYLES.get(cable.connectionRole, CABLE_STYLES.get(cable.cableType, CABLE_STYLES["unknown"]))
     color = _cable_owner_color(cable, devices, source_color_map)[1]
+    source_device = devices.get(cable.sourceDeviceId)
+    target_device = devices.get(cable.targetDeviceId)
+    perimeter_overrides = ""
+    if source_device and source_device.type == "patch_panel":
+        perimeter_overrides += "exitPerimeter=0;"
+    if target_device and target_device.type == "patch_panel":
+        perimeter_overrides += "entryPerimeter=0;"
     style = (
         "edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=10;html=1;"
         "labelBackgroundColor=#ffffff;fontSize=10;spacing=4;"
         f"strokeColor={color};strokeWidth=3;dashed={dashed};endArrow=none;startArrow=none;"
-        f"exitX={cable.exitX};exitY={cable.exitY};entryX={cable.entryX};entryY={cable.entryY};"
+        f"exitX={cable.exitX};exitY={cable.exitY};entryX={cable.entryX};entryY={cable.entryY};{perimeter_overrides}"
     )
     cell = ET.SubElement(
         root,
@@ -324,6 +343,31 @@ def _add_switch_port_summary(root: ET.Element, topology: Topology, devices: dict
             cursor_x += col_width
 
 
+def _add_patch_panel_port_summary(root: ET.Element, topology: Topology, devices: dict[str, Device], x: int, y: int) -> None:
+    patch_panel_devices = [device for device in topology.devices if device.type == "patch_panel"]
+    if not patch_panel_devices:
+        return
+    cable_rows = _port_summary_rows(topology, devices, patch_panel_devices)
+    width = 650
+    height = 24 + TABLE_ROW_HEIGHT + len(cable_rows) * TABLE_ROW_HEIGHT
+    _add_box(root, "patch-panel-port-summary-box", x, y, width, height)
+    _add_text(root, "patch-panel-port-summary-title", "TABLE 4: PATCH PANEL PORT SUMMARY", x, y, width, 24, _table_title_style(TABLE_HEADER_FILL))
+    columns = [("Device", 130), ("Port", 75), ("Connected to", 150), ("Peer port", 80), ("Type", 80), ("Cable", 135)]
+    cursor_x = x
+    header_y = y + 24
+    for label, col_width in columns:
+        _add_text(root, f"patch-panel-summary-header-{_slug(label)}", label, cursor_x, header_y, col_width, TABLE_ROW_HEIGHT, _table_header_style())
+        cursor_x += col_width
+    for index, row in enumerate(cable_rows):
+        row_y = y + 24 + TABLE_ROW_HEIGHT + index * TABLE_ROW_HEIGHT
+        fill = "#FFFFFF" if index % 2 == 0 else "#F7FBFE"
+        cursor_x = x
+        for cell_index, value in enumerate(row):
+            col_width = columns[cell_index][1]
+            _add_text(root, f"patch-panel-summary-row-{index}-{cell_index}", value, cursor_x, row_y, col_width, TABLE_ROW_HEIGHT, _table_cell_style(fill, font_size=8))
+            cursor_x += col_width
+
+
 def _add_source_color_table(
     root: ET.Element,
     topology: Topology,
@@ -396,8 +440,24 @@ def _source_color_table_y(topology: Topology) -> int:
     return y
 
 
+def _patch_panel_port_summary_height(topology: Topology) -> int:
+    device_map = {device.id: device for device in topology.devices}
+    patch_panels = [device for device in topology.devices if device.type == "patch_panel"]
+    if not patch_panels:
+        return 0
+    return 24 + TABLE_ROW_HEIGHT + len(_port_summary_rows(topology, device_map, patch_panels)) * TABLE_ROW_HEIGHT
+
+
+def _patch_panel_port_summary_y(topology: Topology) -> int:
+    return _source_color_table_y(topology) + _source_color_table_height(topology) + REFERENCE_GAP
+
+
 def _reference_bottom(topology: Topology) -> int:
-    source_bottom = _source_color_table_y(topology) + _source_color_table_height(topology)
+    patch_panel_height = _patch_panel_port_summary_height(topology)
+    if patch_panel_height:
+        source_bottom = _patch_panel_port_summary_y(topology) + patch_panel_height
+    else:
+        source_bottom = _source_color_table_y(topology) + _source_color_table_height(topology)
     return max(source_bottom, REFERENCE_START_Y + 178)
 
 

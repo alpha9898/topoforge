@@ -10,6 +10,7 @@ DeviceType: TypeAlias = Literal[
     "firewall",
     "isp_router",
     "other",
+    "patch_panel",
     "pdu",
     "router",
     "server",

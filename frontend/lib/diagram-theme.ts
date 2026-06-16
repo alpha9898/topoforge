@@ -11,6 +11,7 @@
 
 import {
   Box,
+  Cable,
   Cloud,
   HardDrive,
   KeyRound,
@@ -32,7 +33,8 @@ export const DEVICE_GEOMETRY: Record<string, [number, number]> = {
   firewall: [110, 78],
   switch: [190, 46],
   server: [74, 92],
-  storage: [170, 48],
+  storage: [80, 80],
+  patch_panel: [190, 48],
   pdu: [180, 42],
   vpn_gateway: [76, 76],
   admin_endpoint: [86, 68],
@@ -54,6 +56,7 @@ export const DEVICE_THEME: Record<string, DeviceVisual> = {
   switch: { label: "Switch", color: "#00897B", Icon: Network },
   server: { label: "Server", color: "#1E88E5", Icon: Server },
   storage: { label: "Storage", color: "#EF6C00", Icon: HardDrive },
+  patch_panel: { label: "Patch Panel", color: "#666666", Icon: Cable },
   pdu: { label: "Power / PDU", color: "#F9A825", Icon: Zap },
   vpn_gateway: { label: "VPN Gateway", color: "#5E35B1", Icon: KeyRound },
   admin_endpoint: { label: "Admin Endpoint", color: "#3949AB", Icon: Laptop },

@@ -75,7 +75,7 @@ Each step calls the FastAPI backend. The backend stores state **in-memory** (no 
 | `GEMINI_API_KEY` | optional — enables AI parsing |
 
 ### Device layout tiers (top → bottom in generated diagram)
-External → ISP Routers → Firewalls → Switches → Servers/Storage → Power/PDU → Unknown
+External → ISP Routers → Firewalls/Patch Panels → Switches → Servers/Storage → Power/PDU → Unknown
 
 ### Cable color conventions
 `WAN`=gray, `LAN`=blue, `Management/OOB`=green-dashed, `Firewall HA`=purple-dashed, `Storage`=orange, `Power`=red-dashed, `Unknown`=black

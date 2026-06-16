@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { PrimaryButton, SecondaryButton } from "@/components/PrimaryButton";
 import type { Device, TopologyResponse } from "@/lib/types";
 
-const DEVICE_TYPES = ["server", "firewall", "switch", "isp_router", "cloud", "vpn_gateway", "admin_endpoint", "storage", "pdu", "unknown", "other"];
+const DEVICE_TYPES = ["server", "firewall", "patch_panel", "switch", "isp_router", "cloud", "vpn_gateway", "admin_endpoint", "storage", "pdu", "unknown", "other"];
 
 type DeviceDraft = {
   id: string;

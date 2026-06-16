@@ -15,7 +15,7 @@ def build_questions(topology: Topology) -> list[ClarificationQuestion]:
                     message=f'Device "{device.name}" has an unknown type. What should it be classified as?',
                     suggested_answer="server",
                     entity_id=device.id,
-                    options=["firewall", "router", "switch", "server", "storage", "pdu", "other"],
+                    options=["firewall", "patch_panel", "router", "switch", "server", "storage", "pdu", "other"],
                 )
             )
 

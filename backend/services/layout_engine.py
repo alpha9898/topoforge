@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 
 from models import Cable, Device, Topology
@@ -10,6 +11,7 @@ ROW_ORDER = {
     "admin_endpoint": 0,
     "isp_router": 1,
     "firewall": 2,
+    "patch_panel": 2,
     "switch": 3,
     "server": 4,
     "storage": 4,
@@ -23,6 +25,7 @@ ROW_TOP = 110
 LAYOUT_CENTER_X = 720
 MAX_COLUMN_BONUS = 360
 MAX_ROW_BONUS = 320
+PATCH_PANEL_PORT_COUNT = 24
 
 
 def layout_topology(topology: Topology) -> Topology:
@@ -48,20 +51,32 @@ def layout_topology(topology: Topology) -> Topology:
     device_map = {device.id: device for device in topology.devices}
     endpoint_sides: dict[tuple[str, bool], str] = {}
     side_groups: dict[tuple[str, str], list[tuple[Cable, bool]]] = {}
+    direct_points: dict[tuple[str, bool], tuple[float, float]] = {}
 
     for cable in topology.cables:
         source = device_map.get(cable.sourceDeviceId)
         target = device_map.get(cable.targetDeviceId)
         if not source or not target:
             continue
-        source_side = _anchor_side_for(source, target, _endpoint_role(cable, source, target, True))
-        target_side = _anchor_side_for(target, source, _endpoint_role(cable, target, source, False))
-        endpoint_sides[(cable.id, True)] = source_side
-        endpoint_sides[(cable.id, False)] = target_side
-        side_groups.setdefault((source.id, source_side), []).append((cable, True))
-        side_groups.setdefault((target.id, target_side), []).append((cable, False))
+
+        source_point = _patch_panel_point(source, cable.sourcePort)
+        if source_point is not None:
+            direct_points[(cable.id, True)] = source_point
+        else:
+            source_side = _anchor_side_for(source, target, _endpoint_role(cable, source, target, True))
+            endpoint_sides[(cable.id, True)] = source_side
+            side_groups.setdefault((source.id, source_side), []).append((cable, True))
+
+        target_point = _patch_panel_point(target, cable.targetPort)
+        if target_point is not None:
+            direct_points[(cable.id, False)] = target_point
+        else:
+            target_side = _anchor_side_for(target, source, _endpoint_role(cable, target, source, False))
+            endpoint_sides[(cable.id, False)] = target_side
+            side_groups.setdefault((target.id, target_side), []).append((cable, False))
 
     endpoint_points = _assign_side_slot_offsets(side_groups, endpoint_sides)
+    endpoint_points.update(direct_points)
     for cable in topology.cables:
         src_point = endpoint_points.get((cable.id, True))
         tgt_point = endpoint_points.get((cable.id, False))
@@ -203,7 +218,7 @@ def _endpoint_role(cable: Cable, device: Device, peer: Device, is_source: bool) 
         return "storage"
     if _has_any(text, ["wan", "internet", "isp"]):
         return "wan"
-    if device.type == "switch" and peer.type in {"firewall", "isp_router", "router", "cloud", "vpn_gateway"}:
+    if device.type == "switch" and peer.type in {"firewall", "isp_router", "router", "cloud", "vpn_gateway", "patch_panel"}:
         return "uplink"
     if device.type == "switch" and peer.type in {"server", "storage"}:
         return "server_access"
@@ -230,7 +245,7 @@ def _anchor_side_for(device: Device, peer: Device, endpoint_role: str) -> str:
     if device.type == "switch":
         if endpoint_role == "management":
             return "right" if _peer_is_right(device, peer) else "left"
-        if endpoint_role in {"wan", "uplink", "ha"} or peer.type in {"firewall", "isp_router", "router", "cloud", "vpn_gateway"}:
+        if endpoint_role in {"wan", "uplink", "ha"} or peer.type in {"firewall", "isp_router", "router", "cloud", "vpn_gateway", "patch_panel"}:
             return "top"
         if endpoint_role in {"server_access", "storage", "lan", "data"} or peer.type in {"server", "storage"}:
             return "bottom"
@@ -305,3 +320,22 @@ def _endpoint_sort_key(cable: Cable, is_source: bool) -> tuple[str, str, str]:
     port = cable.sourcePort if is_source else cable.targetPort
     peer_id = cable.targetDeviceId if is_source else cable.sourceDeviceId
     return (str(port or ""), peer_id, cable.id)
+
+
+def _parse_port_index(port_name: str | None) -> int | None:
+    if not port_name:
+        return None
+    match = re.search(r"\d+", port_name)
+    if not match:
+        return None
+    return int(match.group())
+
+
+def _patch_panel_point(device: Device, port_name: str | None) -> tuple[float, float] | None:
+    if device.type != "patch_panel":
+        return None
+    index = _parse_port_index(port_name)
+    if index is None:
+        return None
+    index = max(1, min(PATCH_PANEL_PORT_COUNT, index))
+    return round((index - 0.5) / PATCH_PANEL_PORT_COUNT, 4), 0.5

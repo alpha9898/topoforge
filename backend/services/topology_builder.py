@@ -39,6 +39,7 @@ def infer_device_type(name: str, explicit: str | None = None) -> str:
         ("cloud", ["internet", "cloud"]),
         ("isp_router", ["isp", "carrier"]),
         ("firewall", ["firewall", "fwall", "fw"]),
+        ("patch_panel", ["patch panel", "patch-panel", "patchpanel"]),
         ("switch", ["switch", "swtch", "sw"]),
         ("vpn_gateway", ["vpn"]),
         ("admin_endpoint", ["admin", "jump", "bastion"]),

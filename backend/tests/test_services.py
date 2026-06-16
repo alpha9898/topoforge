@@ -418,3 +418,80 @@ def test_cable_reference_includes_expanded_columns_and_vlan_values():
     assert "VLAN" in xml
     assert "VLAN 603" in xml
     assert cells["cable-reference-row-1-7"].attrib["value"] == "-"
+
+
+def test_infer_device_type_detects_patch_panel():
+    assert infer_device_type("Patch Panel 1") == "patch_panel"
+    assert infer_device_type("patch-panel-2") == "patch_panel"
+
+
+def test_drawio_uses_distinct_shapes_for_patch_panel_and_storage():
+    topology = layout_topology(
+        Topology(
+            devices=[
+                Device(id="pp1", name="Patch Panel 1", type="patch_panel"),
+                Device(id="storage1", name="Storage-1", type="storage"),
+            ],
+        )
+    )
+    xml = generate_drawio_xml(topology)
+    cells = {cell.attrib["id"]: cell for cell in ET.fromstring(xml).iter("mxCell") if "id" in cell.attrib}
+
+    assert "shape=mxgraph.rack.general.cat5e_rack_mount_patch_panel_24_ports" in cells["device-pp1"].attrib["style"]
+    assert "shape=mxgraph.azure.storage" in cells["device-storage1"].attrib["style"]
+    assert "cat5e_rack_mount_patch_panel_24_ports" not in cells["device-storage1"].attrib["style"]
+
+
+def test_patch_panel_shares_firewall_layout_tier():
+    topology = layout_topology(
+        Topology(
+            devices=[
+                Device(id="fw1", name="Firewall-1", type="firewall"),
+                Device(id="pp1", name="Patch Panel 1", type="patch_panel"),
+            ],
+        )
+    )
+    firewall = next(device for device in topology.devices if device.id == "fw1")
+    patch_panel = next(device for device in topology.devices if device.id == "pp1")
+
+    assert patch_panel.y == firewall.y
+
+
+def test_patch_panel_port_anchors_are_position_accurate():
+    topology = layout_topology(
+        Topology(
+            devices=[
+                Device(id="sw1", name="SW1", type="switch"),
+                Device(id="pp1", name="Patch Panel 1", type="patch_panel"),
+            ],
+            cables=[
+                Cable(id="cable-001", sourceDeviceId="sw1", sourcePort="Gi1/0/1", targetDeviceId="pp1", targetPort="14", cableType="ethernet", connectionRole="lan")
+            ],
+        )
+    )
+    cable = topology.cables[0]
+
+    assert (cable.entryX, cable.entryY) == (0.5625, 0.5)
+
+
+def test_patch_panel_port_summary_table_presence_and_absence():
+    with_patch_panel = layout_topology(
+        Topology(
+            devices=[
+                Device(id="sw1", name="SW1", type="switch"),
+                Device(id="pp1", name="Patch Panel 1", type="patch_panel"),
+            ],
+            cables=[
+                Cable(id="cable-001", sourceDeviceId="sw1", sourcePort="Gi1/0/1", targetDeviceId="pp1", targetPort="14", cableType="ethernet", connectionRole="lan")
+            ],
+        )
+    )
+    assert "TABLE 4: PATCH PANEL PORT SUMMARY" in generate_drawio_xml(with_patch_panel)
+
+    without_patch_panel = layout_topology(
+        Topology(
+            devices=[Device(id="fw1", name="Firewall-1", type="firewall"), Device(id="sw1", name="SW1", type="switch")],
+            cables=[Cable(id="cable-001", sourceDeviceId="fw1", sourcePort="eth1", targetDeviceId="sw1", targetPort="Gi1/0/49", cableType="ethernet", connectionRole="lan")],
+        )
+    )
+    assert "TABLE 4: PATCH PANEL PORT SUMMARY" not in generate_drawio_xml(without_patch_panel)

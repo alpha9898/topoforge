@@ -320,7 +320,7 @@ def _connection_role(cable: Cable, source: Device, target: Device) -> str:
         return "storage"
     if "ha" in text or "sync" in text:
         return "ha"
-    if {source.type, target.type} & {"switch", "firewall", "server", "storage"}:
+    if {source.type, target.type} & {"switch", "firewall", "server", "storage", "patch_panel"}:
         return "lan"
     return "unknown"
 
